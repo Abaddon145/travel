@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { History, Pencil, Trash2 } from "lucide-react";
+import { History, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
+import { AssistantSheet } from "@/components/assistant-sheet";
 import { MapPanel } from "@/components/map-panel";
 import { TimelineEditor } from "@/components/timeline-editor";
 import { TripFormDrawer } from "@/components/trip-form-drawer";
@@ -25,6 +26,7 @@ export function TripDetailPage() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const remove = useMutation({
     mutationFn: () => deleteTrip(db, tripId),
     onSuccess: (snapshot) => {
@@ -78,6 +80,15 @@ export function TripDetailPage() {
               type="button"
               variant="ghost"
               size="icon"
+              aria-label="助手"
+              onClick={() => setAssistantOpen(true)}
+            >
+              <Sparkles />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               aria-label="版本记录"
               onClick={() => setVersionsOpen(true)}
             >
@@ -120,6 +131,12 @@ export function TripDetailPage() {
         />
         <TimelineEditor detail={trip} selectedId={selectedId} onSelect={setSelectedId} />
       </section>
+      <AssistantSheet
+        open={assistantOpen}
+        onOpenChange={setAssistantOpen}
+        detail={trip}
+        selectedId={selectedId}
+      />
       <TripFormDrawer open={editing} onOpenChange={setEditing} trip={trip} />
       <VersionDrawer
         open={versionsOpen}

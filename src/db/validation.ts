@@ -79,7 +79,13 @@ export const dayInputSchema = z.object({
   note: dayFields.note,
 });
 
-export const daySchema = z.object({ ...dayFields, ...stamp });
+export const daySchema = z.object({
+  ...dayFields,
+  ...stamp,
+  locked: z.boolean().default(false),
+  lockedFrom: timeLabel.default(""),
+  lockedTo: timeLabel.default(""),
+});
 
 const mapFields = {
   mapSource: z.enum(["amap", "unverified"]).default("unverified"),

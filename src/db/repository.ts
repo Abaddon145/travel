@@ -1,5 +1,6 @@
 import type { RoutePick, StoredRoute } from "@/lib/route-status";
 import { draftSchema } from "@shared/ai-schema";
+import { splitLockedOps, type PatchOp } from "@shared/revise-schema";
 import type {
   Day,
   Lodging,
@@ -253,6 +254,9 @@ export async function readTripDetail(
         title: day.title,
         note: day.note,
         order: day.order,
+        locked: day.locked === true,
+        lockedFrom: day.lockedFrom ?? "",
+        lockedTo: day.lockedTo ?? "",
         items: graph.timelineItems
           .filter((item) => item.dayId === day.id)
           .sort((a, b) => a.order - b.order)
@@ -699,14 +703,152 @@ export async function restoreVersion(db: TravelDatabase, versionId: string) {
   if (!version) throw new NotFoundError();
   const parsed = parseVersion(version);
   const snapshot = parseSnapshot(parsed.snapshot);
-  await guard(() =>
+  return guard(() =>
     db.transaction("rw", tables(db), async () => {
       const current = await readGraph(db, snapshot.trip.id);
-      if (current) await writeVersion(db, snapshot.trip.id, "恢复前的行程", current);
+      const redoId = current
+        ? await writeVersion(db, snapshot.trip.id, "恢复前的行程", current)
+        : null;
       await replaceGraph(db, {
         ...snapshot,
         trip: { ...snapshot.trip, updatedAt: Date.now() },
       });
+      return redoId;
     }),
   );
+}
+
+export async function setDayLock(
+  db: TravelDatabase,
+  dayId: string,
+  locked: boolean,
+  window: { from?: string; to?: string } = {},
+) {
+  const day = await db.days.get(dayId);
+  if (!day) throw new NotFoundError();
+  await guard(() =>
+    withPriorVersion(db, day.tripId, locked ? "锁定一天之前" : "解锁一天之前", async () => {
+      const latest = await db.days.get(dayId);
+      if (!latest) throw new NotFoundError();
+      await db.days.put(
+        parseDay({
+          ...latest,
+          locked,
+          lockedFrom: window.from ?? latest.lockedFrom ?? "",
+          lockedTo: window.to ?? latest.lockedTo ?? "",
+          updatedAt: Date.now(),
+        }),
+      );
+    }),
+  );
+}
+
+function lockView(graph: TripSnapshot) {
+  return {
+    days: graph.days.map((day) => ({
+      id: day.id,
+      locked: day.locked === true,
+      lockedFrom: day.lockedFrom ?? "",
+      lockedTo: day.lockedTo ?? "",
+    })),
+    items: graph.timelineItems.map((item) => ({
+      id: item.id,
+      dayId: item.dayId,
+      timeLabel: item.timeLabel,
+      locked: item.locked,
+    })),
+  };
+}
+
+async function applyOps(db: TravelDatabase, tripId: string, ops: PatchOp[]) {
+  const graph = await readGraph(db, tripId);
+  if (!graph) throw new NotFoundError();
+  if (splitLockedOps(lockView(graph), ops).rejected.length > 0) {
+    throw new LockedItemError("助手不能改动已锁定的内容。");
+  }
+  const now = Date.now();
+  for (const op of ops) {
+    if (op.op === "add") {
+      const day = await db.days.get(op.dayId);
+      if (!day || day.tripId !== tripId) throw new NotFoundError();
+      const refId = await insertEntity(
+        db,
+        tripId,
+        {
+          kind: op.kind,
+          name: op.name,
+          area: op.area,
+          note: op.note,
+          timeLabel: op.timeLabel,
+          checkIn: "",
+          checkOut: "",
+        },
+        now,
+      );
+      await db.timelineItems.add(
+        parseTimelineItem({
+          id: createId(),
+          tripId,
+          dayId: op.dayId,
+          kind: op.kind,
+          refId,
+          order: op.order,
+          locked: false,
+          timeLabel: op.timeLabel,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      );
+      continue;
+    }
+    const item = requireItem(await db.timelineItems.get(op.itemId));
+    if (item.tripId !== tripId || item.locked) throw new LockedItemError();
+    if (op.op === "remove") {
+      await db.timelineItems.delete(item.id);
+      await deleteUnreferenced(db, item);
+      continue;
+    }
+    if (op.op === "move") {
+      const day = await db.days.get(op.dayId);
+      if (!day || day.tripId !== tripId || day.locked) throw new LockedItemError();
+      await db.timelineItems.put(
+        parseTimelineItem({ ...item, dayId: op.dayId, order: op.order, updatedAt: now }),
+      );
+      continue;
+    }
+    await db.timelineItems.put(
+      parseTimelineItem({ ...item, timeLabel: op.timeLabel ?? item.timeLabel, updatedAt: now }),
+    );
+    if (item.kind === "place") {
+      const place = await db.places.get(item.refId);
+      if (!place) throw new NotFoundError();
+      await db.places.put(
+        parsePlace({
+          ...place,
+          name: op.name ?? place.name,
+          area: op.area ?? place.area,
+          note: op.note ?? place.note,
+          updatedAt: now,
+        }),
+      );
+    } else {
+      const lodging = await db.lodgings.get(item.refId);
+      if (!lodging) throw new NotFoundError();
+      await db.lodgings.put(
+        parseLodging({
+          ...lodging,
+          name: op.name ?? lodging.name,
+          area: op.area ?? lodging.area,
+          note: op.note ?? lodging.note,
+          updatedAt: now,
+        }),
+      );
+    }
+  }
+  await touchTrip(db, tripId);
+}
+
+export async function applyAssistantPatch(db: TravelDatabase, tripId: string, ops: PatchOp[]) {
+  if (ops.length === 0) throw new ConflictError("没有可应用的修改。");
+  return withPriorVersion(db, tripId, "助手修改之前", () => applyOps(db, tripId, ops));
 }

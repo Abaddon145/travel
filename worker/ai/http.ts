@@ -1,10 +1,13 @@
 import { issueList, preferenceSchema, shanghaiDay } from "../../shared/ai-schema";
+import { reviseRequestSchema } from "../../shared/revise-schema";
 import { isAiModel, sanitizeSecrets } from "./deepseek";
 import { redactForLog } from "../redact";
 import { generateItinerary } from "./generate";
+import { reviseItinerary } from "./revise";
 import { DEFAULT_REQUEST_CAP, DEFAULT_TOKEN_CAP, parseCap } from "./quota";
 
 const BODY_LIMIT = 8_192;
+const REVISE_LIMIT = 48_000;
 
 export type UsageStub = {
   reserve(input: {
@@ -50,6 +53,7 @@ function json(body: unknown, status = 200) {
 
 function statusFor(error: string) {
   if (error === "not_configured") return 501;
+  if (error === "locked_violation") return 409;
   if (error === "validation_error") return 422;
   if (error === "quota_exceeded" || error === "rate_limited") return 429;
   if (error === "timeout") return 504;
@@ -64,7 +68,10 @@ function stub(env: AiEnv) {
 
 export function isAiRoute(pathname: string, method: string) {
   if (method === "GET" && pathname === "/api/ai/usage") return true;
-  if (method === "POST" && (pathname === "/api/ai/itinerary" || pathname === "/api/paid/draft")) {
+  if (
+    method === "POST" &&
+    (pathname === "/api/ai/itinerary" || pathname === "/api/paid/draft" || pathname === "/api/ai/revise")
+  ) {
     return true;
   }
   return false;
@@ -104,11 +111,12 @@ export async function handleAiRequest(
     return json({ error: "not_configured", message: "用量账本还没配置" }, 501);
   }
 
+  const revising = url.pathname === "/api/ai/revise";
   const raw = await request.text().catch(() => null);
   if (raw === null) {
     return json({ error: "validation_error", message: "无法读取请求" }, 422);
   }
-  if (raw.length > BODY_LIMIT) {
+  if (raw.length > (revising ? REVISE_LIMIT : BODY_LIMIT)) {
     return json({ error: "validation_error", message: "请求过大" }, 422);
   }
   let payload: unknown;
@@ -117,6 +125,69 @@ export async function handleAiRequest(
   } catch {
     return json({ error: "validation_error", message: "请求不是 json" }, 422);
   }
+  if (revising) {
+    const reviseParsed = reviseRequestSchema.safeParse(payload);
+    if (!reviseParsed.success) {
+      return json(
+        { error: "validation_error", message: "调整请求不完整", issues: issueList(reviseParsed.error) },
+        422,
+      );
+    }
+    const requested = reviseParsed.data.model;
+    const configured = env.DEEPSEEK_MODEL?.trim() || "deepseek-flash";
+    const model = requested && isAiModel(requested)
+      ? requested
+      : isAiModel(configured)
+        ? configured
+        : "deepseek-flash";
+    const reserved = await ledger.reserve({
+      today,
+      requestCap: caps.dailyRequests,
+      tokenCap: caps.dailyTokens,
+    });
+    if (!reserved.ok) {
+      return json(
+        {
+          error: "quota_exceeded",
+          message: "今日生成额度已用完",
+          caps,
+          today: reserved.today,
+          month: reserved.month,
+        },
+        429,
+      );
+    }
+    try {
+      const result = await reviseItinerary({
+        request: reviseParsed.data,
+        apiKey: env.DEEPSEEK_API_KEY,
+        baseUrl: env.DEEPSEEK_BASE_URL?.trim() || "https://api.deepseek.com",
+        model,
+        fetchImpl,
+      });
+      if (result.charged) await ledger.commit({ today, tokens: result.usage.totalTokens });
+      else await ledger.release({ today });
+      if (!result.ok) {
+        return json(
+          { error: result.error, message: result.message, usage: result.usage },
+          statusFor(result.error),
+        );
+      }
+      return json({
+        message: result.message,
+        ops: result.ops,
+        rejected: result.rejected,
+        usage: result.usage,
+      });
+    } catch (error) {
+      const name = error instanceof Error ? error.name : "Error";
+      const message = sanitizeSecrets(error instanceof Error ? error.message : "unknown").slice(0, 200);
+      console.log(JSON.stringify(redactForLog({ source: "ai-revise", errorName: name, errorMessage: message })));
+      await ledger.release({ today });
+      return json({ error: "network", message: "网络错误，没有连上模型服务。" }, 502);
+    }
+  }
+
   const parsed = preferenceSchema.safeParse(payload);
   if (!parsed.success) {
     return json(

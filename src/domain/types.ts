@@ -20,6 +20,9 @@ export type Day = {
   order: number;
   createdAt: number;
   updatedAt: number;
+  locked?: boolean;
+  lockedFrom?: string;
+  lockedTo?: string;
 };
 
 export type MapSource = "amap" | "unverified";
@@ -98,6 +101,9 @@ export type DayView = {
   title: string;
   note: string;
   order: number;
+  locked?: boolean;
+  lockedFrom?: string;
+  lockedTo?: string;
   items: TimelineEntry[];
 };
 

@@ -12,6 +12,7 @@ import {
   deleteTimelineItem,
   moveTimelineItem,
   restoreVersion,
+  setDayLock,
   setTimelineLock,
 } from "@/db/repository";
 import type { DayView, TimelineEntry, TripDetail } from "@/domain/types";
@@ -96,10 +97,54 @@ export function TimelineEditor({
           selectedId={selectedId}
           onSelect={onSelect}
           onReorder={(item, direction) => move.mutate({ id: item.id, direction })}
+          renderDayFooter={(day) => (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                锁定自
+                <input
+                  type="time"
+                  className="h-11 rounded-lg border bg-background px-2 text-sm text-foreground"
+                  value={day.lockedFrom ?? ""}
+                  aria-label={`${day.title}锁定开始`}
+                  onChange={(event) =>
+                    void setDayLock(db, day.id, day.locked === true, {
+                      from: event.target.value,
+                      to: day.lockedTo ?? "",
+                    })
+                  }
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
+                锁定至
+                <input
+                  type="time"
+                  className="h-11 rounded-lg border bg-background px-2 text-sm text-foreground"
+                  value={day.lockedTo ?? ""}
+                  aria-label={`${day.title}锁定结束`}
+                  onChange={(event) =>
+                    void setDayLock(db, day.id, day.locked === true, {
+                      from: day.lockedFrom ?? "",
+                      to: event.target.value,
+                    })
+                  }
+                />
+              </label>
+            </div>
+          )}
           renderDayActions={(day) => {
             const blocked = day.items.some((item) => item.locked);
             return (
               <>
+                <Button
+                  type="button"
+                  variant={day.locked ? "secondary" : "ghost"}
+                  size="icon"
+                  aria-pressed={day.locked === true}
+                  aria-label={day.locked ? `解锁${day.title}` : `锁定${day.title}`}
+                  onClick={() => void setDayLock(db, day.id, day.locked !== true)}
+                >
+                  {day.locked ? <Lock /> : <LockOpen />}
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"

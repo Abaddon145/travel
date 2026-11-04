@@ -7,6 +7,7 @@ import { formatDateWithWeekday } from "@/lib/dates";
 export function TripTimeline({
   days,
   renderDayActions,
+  renderDayFooter,
   renderItemActions,
   onReorder,
   selectedId,
@@ -14,6 +15,7 @@ export function TripTimeline({
 }: {
   days: DayView[];
   renderDayActions?: (day: DayView) => ReactNode;
+  renderDayFooter?: (day: DayView) => ReactNode;
   renderItemActions?: (item: TimelineEntry) => ReactNode;
   onReorder?: (item: TimelineEntry, direction: "up" | "down") => void;
   selectedId?: string | null;
@@ -36,11 +38,18 @@ export function TripTimeline({
               {day.note ? (
                 <p className="text-sm text-muted-foreground">{day.note}</p>
               ) : null}
+              {day.locked ? <p className="text-xs text-muted-foreground">全天已锁定</p> : null}
+              {!day.locked && day.lockedFrom && day.lockedTo ? (
+                <p className="text-xs text-muted-foreground">
+                  {day.lockedFrom}–{day.lockedTo} 已锁定
+                </p>
+              ) : null}
             </div>
             {renderDayActions ? (
               <div className="flex shrink-0 gap-1">{renderDayActions(day)}</div>
             ) : null}
           </div>
+          {renderDayFooter ? renderDayFooter(day) : null}
           <ol className="flex flex-col gap-4 border-l border-border pl-4">
             {day.items.map((item) => (
               <TimelineRow
