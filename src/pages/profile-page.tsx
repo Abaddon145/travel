@@ -89,7 +89,7 @@ export function ProfilePage() {
           <h2 className="text-sm font-medium">关于</h2>
           <p className="text-sm leading-6 text-muted-foreground">
             旅序 AI
-            Travel。行程仍在这台设备上。云端目前只提供同一源站的接口门禁，生成和地图还没有接入。
+            Travel。行程仍在这台设备上。可以在行程页生成多日草稿。地图还没有接入。
           </p>
         </div>
       </section>

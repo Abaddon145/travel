@@ -115,7 +115,8 @@ export async function generateItinerary(input: {
   const model = input.model;
   const started = (input.now ?? Date.now)();
   const timeoutMs = input.timeoutMs ?? 25_000;
-  const fetchImpl = input.fetchImpl ?? fetch;
+  const providedFetch = input.fetchImpl ?? fetch;
+  const fetchImpl: typeof fetch = (request, init) => providedFetch.call(globalThis, request, init);
   const sleep = input.sleep ?? ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)));
   const now = input.now ?? Date.now;
   if (!input.apiKey.trim()) {
@@ -148,7 +149,6 @@ export async function generateItinerary(input: {
   let charged = false;
   let attempts = 0;
   let repairs = 0;
-  let upstreamRetries = 0;
 
   while (attempts < 3) {
     if (now() - started >= timeoutMs) {
@@ -172,25 +172,10 @@ export async function generateItinerary(input: {
       signal,
     });
     if (!completion.ok) {
-      if (completion.code === "network" || completion.code === "timeout") {
-        if (upstreamRetries >= 2 || attempts >= 3) {
-          return {
-            ok: false,
-            error: completion.code,
-            message: completion.message,
-            usage: { ...tokens, model, latencyMs: now() - started, attempts },
-            charged,
-          };
-        }
-        upstreamRetries += 1;
-        await sleep(400 * 2 ** (upstreamRetries - 1));
-        attempts -= 1;
-        continue;
-      }
-      charged = true;
-      if (completion.retryable && upstreamRetries < 2 && attempts < 3) {
-        upstreamRetries += 1;
-        await sleep(400 * 2 ** (upstreamRetries - 1));
+      const reachedUpstream = completion.code !== "network" && completion.code !== "timeout";
+      if (reachedUpstream) charged = true;
+      if (completion.retryable && attempts < 3) {
+        await sleep(400 * 2 ** (attempts - 1));
         continue;
       }
       return {

@@ -127,5 +127,30 @@ describe("生成与修复", () => {
     });
     expect(broken).toHaveBeenCalledTimes(3);
     expect(failed).toMatchObject({ ok: false, error: "invalid_output", charged: true });
+    expect(failed.ok ? null : failed.usage.attempts).toBe(3);
+  });
+
+  it("网络错误会退避重试，并记下真实尝试次数", async () => {
+    const sleep = vi.fn(async () => undefined);
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError("Illegal invocation");
+    });
+    const result = await generateItinerary({
+      preferences: preference,
+      apiKey: "sk-test-secret-value",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-flash",
+      fetchImpl,
+      sleep,
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(sleep).toHaveBeenNthCalledWith(1, 400);
+    expect(sleep).toHaveBeenNthCalledWith(2, 800);
+    expect(result).toMatchObject({
+      ok: false,
+      error: "network",
+      charged: false,
+      usage: { attempts: 3, totalTokens: 0 },
+    });
   });
 });

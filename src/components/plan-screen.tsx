@@ -52,8 +52,8 @@ const failureCopy: Record<AiFailure, string> = {
   invalid_output: "草稿没有通过校验。",
   rate_limited: "请求过于频繁。",
   quota_exceeded: "今日额度已用完。",
-  timeout: "生成超时。",
-  network: "网络错误。",
+  timeout: "生成超时，模型没有在限定时间内返回。",
+  network: "网络错误，没有连上模型服务。",
   upstream_auth: "模型服务没有接受密钥。",
   upstream_balance: "模型账户余额不足。",
   upstream_unavailable: "模型服务暂时不可用。",
@@ -137,6 +137,15 @@ export function PlanScreen({
   onSave: () => void;
 }) {
   const reduce = useReducedMotion();
+  const failure =
+    phase.kind === "form" ||
+    phase.kind === "generating" ||
+    phase.kind === "retrying" ||
+    phase.kind === "preview" ||
+    phase.kind === "saving"
+      ? null
+      : phase;
+  const showForm = phase.kind === "form" || failure !== null;
   const errors = phase.kind === "form" ? phase.errors : {};
   return (
     <motion.div
@@ -145,7 +154,16 @@ export function PlanScreen({
       animate={{ opacity: 1, transform: "translateY(0px)" }}
       transition={{ duration: reduce ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
-      {phase.kind === "form" ? (
+      {failure ? (
+        <div className="flex flex-col gap-4" role="status">
+          <p className="text-sm leading-6">{failureCopy[failure.kind]}</p>
+          <Button type="button" variant="outline" className="h-11" onClick={onRetry}>
+            重试
+          </Button>
+        </div>
+      ) : null}
+
+      {showForm ? (
         <form
           className="flex flex-col gap-4"
           onSubmit={(event) => {
@@ -247,7 +265,7 @@ export function PlanScreen({
             </ul>
           ) : null}
           <p className="text-sm text-muted-foreground">
-            {phase.usage.attempts} 次尝试，{phase.usage.totalTokens} token，估算{" "}
+            尝试 {phase.usage.attempts} 次，共 {phase.usage.totalTokens} 个令牌，按美元估算{" "}
             {formatUsd(estimateUsd(phase.usage))}。
           </p>
           <TripTimeline days={toTimeline({ ...phase.draft, title })} />
@@ -269,19 +287,6 @@ export function PlanScreen({
         <p role="status" className="text-sm">
           正在保存
         </p>
-      ) : null}
-
-      {phase.kind !== "form" &&
-      phase.kind !== "generating" &&
-      phase.kind !== "retrying" &&
-      phase.kind !== "preview" &&
-      phase.kind !== "saving" ? (
-        <div className="flex flex-col gap-4" role="status">
-          <p className="text-sm leading-6">{phase.message || failureCopy[phase.kind]}</p>
-          <Button type="button" variant="outline" className="h-11" onClick={onRetry}>
-            重试
-          </Button>
-        </div>
       ) : null}
     </motion.div>
   );

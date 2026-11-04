@@ -20,7 +20,7 @@ export function UsageStats() {
       <h2 className="text-sm font-medium">额度</h2>
       <p className="text-sm leading-6 text-muted-foreground">
         {stats
-          ? `今日 ${stats.todayCalls} 次、${stats.todayTokens} token。本月 ${stats.monthCalls} 次、${stats.monthTokens} token。估算 ${formatUsd(stats.monthUsd)}（闲时标价，高峰约为两倍）。`
+          ? `今日 ${stats.todayCalls} 次、${stats.todayTokens} 个令牌。本月 ${stats.monthCalls} 次、${stats.monthTokens} 个令牌。按美元估算 ${formatUsd(stats.monthUsd)}（官方闲时标价，高峰约为两倍）。`
           : "正在读取本机用量。"}
         {remote.data
           ? ` 服务端今日 ${remote.data.today.requests}/${remote.data.caps.dailyRequests} 次。`

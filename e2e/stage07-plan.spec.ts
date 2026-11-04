@@ -173,12 +173,12 @@ test("生成草稿、预览、保存，并截下各种状态", async ({ page }) 
 
   mode = "abort";
   await page.getByRole("button", { name: "重试" }).click();
-  await expect(page.getByText("网络错误")).toBeVisible();
+  await expect(page.getByText("没有连上模型服务")).toBeVisible();
   await page.screenshot({ path: `${directory}/network-error.png` });
 
   mode = "unauthorized";
   await page.getByRole("button", { name: "重试" }).click();
-  await expect(page.getByText("未授权", { exact: true })).toBeVisible();
+  await expect(page.getByText("请先在「我的」里保存并通过私人密钥")).toBeVisible();
   await page.screenshot({ path: `${directory}/unauthorized.png` });
 
   mode = "retry-delay";

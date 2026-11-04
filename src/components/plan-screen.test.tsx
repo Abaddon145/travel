@@ -101,8 +101,9 @@ describe("起草界面状态", () => {
     expect(screen.getByText("请求过于频繁。")).toBeInTheDocument();
     show({ kind: "quota_exceeded", message: "今日额度已用完。" });
     expect(screen.getByText("今日额度已用完。")).toBeInTheDocument();
-    show({ kind: "network", message: "网络错误。" });
-    expect(screen.getByText("网络错误。")).toBeInTheDocument();
+    show({ kind: "network", message: "网络错误，没有连上模型服务。" });
+    expect(screen.getByText(/没有连上模型服务/)).toBeInTheDocument();
+    expect(screen.getByLabelText("目的地")).toBeInTheDocument();
     show({ kind: "unauthorized", message: "未授权。请先在「我的」里保存并通过私人密钥。" });
     expect(screen.getByText(/未授权/)).toBeInTheDocument();
     show({ kind: "invalid_output", message: "草稿没有通过校验。" });

@@ -1,4 +1,5 @@
 import { AI_MODELS, type AiModel } from "../../shared/ai-schema";
+import { redactForLog } from "../redact";
 
 export type TokenUsage = {
   promptTokens: number;
@@ -61,21 +62,35 @@ export function readUsage(value: unknown): TokenUsage {
 
 function mapStatus(status: number): Pick<Extract<Completion, { ok: false }>, "code" | "message" | "retryable"> {
   if (status === 401) {
-    return { code: "upstream_auth", message: "模型服务没有接受密钥", retryable: false };
+    return { code: "upstream_auth", message: "模型服务没有接受密钥。", retryable: false };
   }
   if (status === 402) {
-    return { code: "upstream_balance", message: "模型账户余额不足", retryable: false };
+    return { code: "upstream_balance", message: "模型账户余额不足。", retryable: false };
   }
   if (status === 429) {
-    return { code: "rate_limited", message: "模型服务请求过于频繁", retryable: true };
+    return { code: "rate_limited", message: "请求过于频繁。", retryable: true };
   }
   if (status === 400 || status === 422) {
-    return { code: "upstream_rejected", message: "模型服务拒绝了这次请求", retryable: false };
+    return { code: "upstream_rejected", message: "模型服务拒绝了这次请求。", retryable: false };
   }
   if (status >= 500) {
-    return { code: "upstream_unavailable", message: "模型服务暂时不可用", retryable: true };
+    return { code: "upstream_unavailable", message: "模型服务暂时不可用。", retryable: true };
   }
-  return { code: "upstream_rejected", message: "模型服务拒绝了这次请求", retryable: false };
+  return { code: "upstream_rejected", message: "模型服务拒绝了这次请求。", retryable: false };
+}
+
+function logFetchError(error: unknown) {
+  const name = error instanceof Error ? error.name : "Error";
+  const message = sanitizeSecrets(error instanceof Error ? error.message : "unknown").slice(0, 200);
+  console.log(
+    JSON.stringify(
+      redactForLog({
+        source: "deepseek",
+        errorName: name,
+        errorMessage: message,
+      }),
+    ),
+  );
 }
 
 export async function completeJson(input: {
@@ -89,7 +104,9 @@ export async function completeJson(input: {
   const url = `${input.baseUrl.replace(/\/$/, "")}/chat/completions`;
   let response: Response;
   try {
-    response = await input.fetchImpl(url, {
+    // Workers throw Illegal invocation if fetch is called as a method of another object.
+    const fetchImpl = input.fetchImpl;
+    response = await fetchImpl.call(globalThis, url, {
       method: "POST",
       signal: input.signal,
       headers: {
@@ -100,6 +117,7 @@ export async function completeJson(input: {
         model: input.model,
         messages: input.messages,
         response_format: { type: "json_object" },
+        // Docs: omitting thinking enables reasoning. disabled is the non-thinking mode.
         thinking: { type: "disabled" },
         temperature: 0.4,
         max_tokens: 8192,
@@ -107,13 +125,14 @@ export async function completeJson(input: {
       }),
     });
   } catch (error) {
+    logFetchError(error);
     const aborted = error instanceof Error && error.name === "AbortError";
     return {
       ok: false,
       status: aborted ? 504 : 0,
       retryable: true,
       code: aborted ? "timeout" : "network",
-      message: aborted ? "生成超时" : "网络错误",
+      message: aborted ? "生成超时，模型没有在限定时间内返回。" : "网络错误，没有连上模型服务。",
     };
   }
 
@@ -136,13 +155,17 @@ export async function completeJson(input: {
   }
   const body = payload as {
     model?: unknown;
-    choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
+    choices?: {
+      message?: { content?: unknown; reasoning_content?: unknown };
+      finish_reason?: unknown;
+    }[];
     usage?: unknown;
   };
-  const content = body.choices?.[0]?.message?.content;
+  const message = body.choices?.[0]?.message;
+  const content = typeof message?.content === "string" ? message.content : "";
   return {
     ok: true,
-    content: typeof content === "string" ? content : "",
+    content,
     finishReason: typeof body.choices?.[0]?.finish_reason === "string"
       ? body.choices[0].finish_reason
       : "",

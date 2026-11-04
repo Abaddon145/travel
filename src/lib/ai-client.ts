@@ -53,7 +53,7 @@ export async function requestItinerary(preference: TravelPreference): Promise<It
       body: JSON.stringify(preference),
     });
   } catch {
-    return { ok: false, error: "network", message: "网络错误" };
+    return { ok: false, error: "network", message: "网络错误，没有连上模型服务。" };
   }
   const body = (await response.json().catch(() => null)) as {
     error?: unknown;
@@ -62,7 +62,7 @@ export async function requestItinerary(preference: TravelPreference): Promise<It
     usage?: PricedUsage;
   } | null;
   if (response.status === 401) {
-    return { ok: false, error: "unauthorized", message: "未授权" };
+    return { ok: false, error: "unauthorized", message: "未授权。请先在「我的」里保存并通过私人密钥。" };
   }
   if (!response.ok || !body) {
     const error = asFailure(body?.error);

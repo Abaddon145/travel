@@ -1,5 +1,6 @@
 import { issueList, preferenceSchema, shanghaiDay } from "../../shared/ai-schema";
-import { isAiModel } from "./deepseek";
+import { isAiModel, sanitizeSecrets } from "./deepseek";
+import { redactForLog } from "../redact";
 import { generateItinerary } from "./generate";
 import { DEFAULT_REQUEST_CAP, DEFAULT_TOKEN_CAP, parseCap } from "./quota";
 
@@ -72,7 +73,7 @@ export function isAiRoute(pathname: string, method: string) {
 export async function handleAiRequest(
   request: Request,
   env: AiEnv,
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: typeof fetch = (input, init) => fetch(input, init),
 ) {
   const url = new URL(request.url);
   const caps = {
@@ -179,8 +180,11 @@ export async function handleAiRequest(
       );
     }
     return json({ draft: result.draft, usage: result.usage });
-  } catch {
+  } catch (error) {
+    const name = error instanceof Error ? error.name : "Error";
+    const message = sanitizeSecrets(error instanceof Error ? error.message : "unknown").slice(0, 200);
+    console.log(JSON.stringify(redactForLog({ source: "ai", errorName: name, errorMessage: message })));
     await ledger.release({ today });
-    return json({ error: "network", message: "网络错误" }, 502);
+    return json({ error: "network", message: "网络错误，没有连上模型服务。" }, 502);
   }
 }

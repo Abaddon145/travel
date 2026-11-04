@@ -64,6 +64,30 @@ describe("DeepSeek 适配器", () => {
     expect(sanitizeSecrets(`failed ${key}`)).toBe("failed [redacted]");
   });
 
+  it("不会把 fetch 当成其他对象的方法来调用", async () => {
+    function strictFetch(this: unknown) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError("Illegal invocation");
+      }
+      return jsonResponse(200, {
+        model: "deepseek-flash",
+        choices: [{ message: { content: "{\"ok\":true}", reasoning_content: "思考" }, finish_reason: "stop" }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2, prompt_cache_hit_tokens: 0, prompt_cache_miss_tokens: 1 },
+      });
+    }
+    const result = await completeJson({
+      fetchImpl: strictFetch as unknown as typeof fetch,
+      apiKey: key,
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-flash",
+      messages: [{ role: "user", content: "json" }],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.content).toBe('{"ok":true}');
+    expect(result.content).not.toContain("思考");
+  });
+
   it("429 与 5xx 可以重试，402 不行", async () => {
     const rateLimited = await completeJson({
       fetchImpl: async () => jsonResponse(429, {}),
