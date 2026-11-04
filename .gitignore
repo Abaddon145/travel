@@ -18,6 +18,7 @@ test-results
 .dev.vars
 .wrangler
 worker/worker-configuration.d.ts
+*.tsbuildinfo
 
 # Editor directories and files
 .vscode/*
