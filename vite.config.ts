@@ -46,7 +46,7 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/_AMapService\//],
         globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest}"],
         clientsClaim: true,
         skipWaiting: true,
@@ -59,6 +59,16 @@ export default defineConfig({
           },
           {
             urlPattern: /\/api\//,
+            handler: "NetworkOnly",
+            method: "POST",
+          },
+          {
+            urlPattern: /\/_AMapService\//,
+            handler: "NetworkOnly",
+            method: "GET",
+          },
+          {
+            urlPattern: /\/_AMapService\//,
             handler: "NetworkOnly",
             method: "POST",
           },
@@ -81,6 +91,10 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       "/api": {
+        target: "http://127.0.0.1:8787",
+        changeOrigin: true,
+      },
+      "/_AMapService": {
         target: "http://127.0.0.1:8787",
         changeOrigin: true,
       },

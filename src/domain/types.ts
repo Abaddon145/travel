@@ -22,6 +22,8 @@ export type Day = {
   updatedAt: number;
 };
 
+export type MapSource = "amap" | "unverified";
+
 export type Place = {
   id: string;
   tripId: string;
@@ -30,6 +32,12 @@ export type Place = {
   note: string;
   createdAt: number;
   updatedAt: number;
+  mapSource?: MapSource;
+  amapPoiId?: string;
+  amapAddress?: string;
+  amapLng?: number | null;
+  amapLat?: number | null;
+  amapFetchedAt?: number | null;
 };
 
 export type Lodging = {
@@ -42,6 +50,12 @@ export type Lodging = {
   checkOut: string;
   createdAt: number;
   updatedAt: number;
+  mapSource?: MapSource;
+  amapPoiId?: string;
+  amapAddress?: string;
+  amapLng?: number | null;
+  amapLat?: number | null;
+  amapFetchedAt?: number | null;
 };
 
 export type TimelineItem = {
@@ -59,6 +73,7 @@ export type TimelineItem = {
 
 export type TimelineEntry = {
   id: string;
+  dayId?: string;
   kind: ItemKind;
   refId: string;
   name: string;
@@ -69,6 +84,12 @@ export type TimelineEntry = {
   order: number;
   checkIn?: string;
   checkOut?: string;
+  mapSource?: MapSource;
+  amapPoiId?: string;
+  amapAddress?: string;
+  amapLng?: number | null;
+  amapLat?: number | null;
+  amapFetchedAt?: number | null;
 };
 
 export type DayView = {

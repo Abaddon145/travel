@@ -1,3 +1,4 @@
+import type { StoredRoute } from "@/lib/route-status";
 import { draftSchema } from "@shared/ai-schema";
 import type {
   Day,
@@ -142,12 +143,19 @@ function toEntry(
     if (!place) return null;
     return {
       id: item.id,
+      dayId: item.dayId,
       kind: "place",
       refId: item.refId,
       name: place.name,
       area: place.area,
       note: place.note,
       timeLabel: item.timeLabel,
+      mapSource: place.mapSource,
+      amapPoiId: place.amapPoiId,
+      amapAddress: place.amapAddress,
+      amapLng: place.amapLng,
+      amapLat: place.amapLat,
+      amapFetchedAt: place.amapFetchedAt,
       locked: item.locked,
       order: item.order,
     };
@@ -156,6 +164,7 @@ function toEntry(
   if (!lodging) return null;
   return {
     id: item.id,
+    dayId: item.dayId,
     kind: "lodging",
     refId: item.refId,
     name: lodging.name,
@@ -166,6 +175,12 @@ function toEntry(
     order: item.order,
     checkIn: lodging.checkIn,
     checkOut: lodging.checkOut,
+    mapSource: lodging.mapSource,
+    amapPoiId: lodging.amapPoiId,
+    amapAddress: lodging.amapAddress,
+    amapLng: lodging.amapLng,
+    amapLat: lodging.amapLat,
+    amapFetchedAt: lodging.amapFetchedAt,
   };
 }
 
@@ -633,6 +648,42 @@ export async function saveGeneratedDraft(db: TravelDatabase, input: unknown) {
       return trip.id;
     }),
   );
+}
+
+export async function attachMapMatch(
+  db: TravelDatabase,
+  kind: "place" | "lodging",
+  refId: string,
+  match: { poiId: string; name: string; address: string; lng: number; lat: number },
+) {
+  const now = Date.now();
+  const patch = {
+    name: match.name.slice(0, 40),
+    mapSource: "amap" as const,
+    amapPoiId: match.poiId,
+    amapAddress: match.address.slice(0, 120),
+    amapLng: match.lng,
+    amapLat: match.lat,
+    amapFetchedAt: now,
+    updatedAt: now,
+  };
+  if (kind === "place") {
+    const place = await db.places.get(refId);
+    if (!place) throw new NotFoundError();
+    await db.places.put(parsePlace({ ...place, ...patch }));
+    return;
+  }
+  const lodging = await db.lodgings.get(refId);
+  if (!lodging) throw new NotFoundError();
+  await db.lodgings.put(parseLodging({ ...lodging, ...patch }));
+}
+
+export async function saveMapRoute(db: TravelDatabase, route: StoredRoute) {
+  await db.mapRoutes.put(route);
+}
+
+export async function readMapRoutes(db: TravelDatabase, tripId: string) {
+  return db.mapRoutes.where("tripId").equals(tripId).toArray();
 }
 
 export async function restoreVersion(db: TravelDatabase, versionId: string) {

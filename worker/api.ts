@@ -2,6 +2,7 @@ import { devBypassAllowed, type AccessEnv, type AccessIdentity } from "./access"
 import { authorizeGate, gateConfigured, type GateDecision } from "./gate";
 import { parseAuthMode, type GateEnv } from "./owner-key";
 import { isAiRoute } from "./ai/http";
+import { isMapRoute } from "./map/http";
 import { enforceRateLimit, rateLimitKey, type RateLimiter } from "./rate-limit";
 
 export type ApiDeps = {
@@ -11,6 +12,7 @@ export type ApiDeps = {
   log: (event: Record<string, unknown>) => void;
   onAuthorizedPaid?: () => void;
   handleAi?: (request: Request) => Promise<Response>;
+  handleMap?: (request: Request) => Promise<Response>;
 };
 
 function json(body: unknown, status = 200) {
@@ -36,6 +38,7 @@ function isGatedPath(pathname: string) {
     pathname === "/api/ai/itinerary" ||
     pathname === "/api/ai/usage" ||
     pathname.startsWith("/api/ai/") ||
+    pathname.startsWith("/api/map/") ||
     pathname === "/api/admin/health" ||
     pathname.startsWith("/api/admin/")
   );
@@ -97,6 +100,9 @@ export async function handleApi(request: Request, env: GateEnv, deps: ApiDeps) {
     deps.onAuthorizedPaid?.();
     if (isAiRoute(url.pathname, request.method) && deps.handleAi) {
       return deps.handleAi(request);
+    }
+    if (isMapRoute(url.pathname) && deps.handleMap) {
+      return deps.handleMap(request);
     }
     if (url.pathname === "/api/admin/health" && request.method === "GET") {
       deps.log({ route, status: 200, result: "ok" });

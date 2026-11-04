@@ -4,6 +4,7 @@ import { History, Pencil, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
+import { MapPanel } from "@/components/map-panel";
 import { TimelineEditor } from "@/components/timeline-editor";
 import { TripFormDrawer } from "@/components/trip-form-drawer";
 import { VersionDrawer } from "@/components/version-drawer";
@@ -23,6 +24,7 @@ export function TripDetailPage() {
   const [editing, setEditing] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const remove = useMutation({
     mutationFn: () => deleteTrip(db, tripId),
     onSuccess: (snapshot) => {
@@ -109,7 +111,14 @@ export function TripDetailPage() {
           </p>
           <p className="text-sm leading-6">{trip.summary}</p>
         </div>
-        <TimelineEditor detail={trip} />
+        <MapPanel
+          tripId={trip.id}
+          destination={trip.destination}
+          items={trip.days.flatMap((day) => day.items)}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+        <TimelineEditor detail={trip} selectedId={selectedId} onSelect={setSelectedId} />
       </section>
       <TripFormDrawer open={editing} onOpenChange={setEditing} trip={trip} />
       <VersionDrawer

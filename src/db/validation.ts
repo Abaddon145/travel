@@ -81,6 +81,15 @@ export const dayInputSchema = z.object({
 
 export const daySchema = z.object({ ...dayFields, ...stamp });
 
+const mapFields = {
+  mapSource: z.enum(["amap", "unverified"]).default("unverified"),
+  amapPoiId: z.string().max(40).default(""),
+  amapAddress: z.string().max(120).default(""),
+  amapLng: z.number().finite().nullable().default(null),
+  amapLat: z.number().finite().nullable().default(null),
+  amapFetchedAt: z.number().int().nullable().default(null),
+};
+
 const placeFields = {
   tripId: z.string().min(1),
   name: z.string().trim().min(1, "请填写名称").max(40, "名称请控制在 40 个字以内"),
@@ -88,7 +97,7 @@ const placeFields = {
   note: z.string().trim().max(200, "备注请控制在 200 个字以内"),
 };
 
-export const placeSchema = z.object({ ...placeFields, ...stamp });
+export const placeSchema = z.object({ ...placeFields, ...stamp, ...mapFields });
 
 const lodgingFields = {
   ...placeFields,
@@ -96,7 +105,7 @@ const lodgingFields = {
   checkOut: optionalDate,
 };
 
-export const lodgingSchema = z.object(lodgingFields).extend(stamp);
+export const lodgingSchema = z.object(lodgingFields).extend(stamp).extend(mapFields);
 
 export const itemInputSchema = z.object({
   kind: z.enum(["place", "lodging"]),

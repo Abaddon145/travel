@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from "dexie";
 import type { AiUsageEntry } from "@/db/ai-usage";
+import type { StoredRoute } from "@/lib/route-status";
 import type {
   Day,
   Lodging,
@@ -27,6 +28,7 @@ export class TravelDatabase extends Dexie {
   timelineItems!: EntityTable<TimelineItem, "id">;
   versions!: EntityTable<TripVersion, "id">;
   aiUsage!: EntityTable<AiUsageEntry, "id">;
+  mapRoutes!: EntityTable<StoredRoute, "id">;
 
   constructor(name = DB_NAME, options: TravelDatabaseOptions = {}) {
     super(name);
@@ -54,6 +56,19 @@ export class TravelDatabase extends Dexie {
     this.version(4).stores({
       aiUsage: "id, createdAt",
     });
+
+    this.version(5)
+      .stores({
+        mapRoutes: "id, tripId, fromItemId, toItemId",
+      })
+      .upgrade(async (transaction) => {
+        await transaction.table("places").toCollection().modify((place) => {
+          place.mapSource ??= "unverified";
+        });
+        await transaction.table("lodgings").toCollection().modify((lodging) => {
+          lodging.mapSource ??= "unverified";
+        });
+      });
 
     this.on("populate", () => {
       if (!seed) return undefined;

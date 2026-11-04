@@ -123,4 +123,28 @@ describe("v1 到 v2 迁移", () => {
     });
     expect(await upgraded.aiUsage.count()).toBe(1);
   });
+
+  it("版本 5 保留行程并把旧地点标成未核实", async () => {
+    const name = `v4-${crypto.randomUUID()}`;
+    const legacy = new Dexie(name);
+    legacy.version(4).stores({
+      trips: "id, updatedAt",
+      days: "id, tripId, date, [tripId+date]",
+      places: "id, tripId",
+      lodgings: "id, tripId",
+      timelineItems: "id, tripId, dayId, order, [dayId+order]",
+      versions: "id, tripId, createdAt",
+      aiUsage: "id, createdAt",
+    });
+    await legacy.open();
+    await legacy.table("trips").add({ id: "keep", title: "仍在" });
+    await legacy.table("places").add({ id: "p1", tripId: "keep", name: "清水寺" });
+    legacy.close();
+    const upgraded = new TravelDatabase(name, { seed: false });
+    opened.push(upgraded);
+    await upgraded.open();
+    expect((await upgraded.trips.get("keep"))?.title).toBe("仍在");
+    expect((await upgraded.places.get("p1"))?.mapSource).toBe("unverified");
+    expect(upgraded.tables.some((table) => table.name === "mapRoutes")).toBe(true);
+  });
 });

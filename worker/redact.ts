@@ -1,5 +1,5 @@
 const sensitiveKey =
-  /authorization|cookie|email|secret|token|password|api[-_]?key|jwt|assertion|cf-access|owner[-_]?key|x-lvxu-owner-key|deepseek/i;
+  /authorization|cookie|email|secret|token|password|api[-_]?key|jwt|assertion|cf-access|owner[-_]?key|x-lvxu-owner-key|deepseek|jscode|amap/i;
 
 const secretToken = /sk-[A-Za-z0-9_-]+/g;
 

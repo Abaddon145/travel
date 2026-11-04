@@ -9,11 +9,15 @@ export function TripTimeline({
   renderDayActions,
   renderItemActions,
   onReorder,
+  selectedId,
+  onSelect,
 }: {
   days: DayView[];
   renderDayActions?: (day: DayView) => ReactNode;
   renderItemActions?: (item: TimelineEntry) => ReactNode;
   onReorder?: (item: TimelineEntry, direction: "up" | "down") => void;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
 }) {
   if (days.length === 0) {
     return null;
@@ -44,6 +48,8 @@ export function TripTimeline({
                 item={item}
                 actions={renderItemActions?.(item)}
                 onReorder={onReorder}
+                selected={selectedId === item.id}
+                onSelect={onSelect}
               />
             ))}
           </ol>
@@ -57,10 +63,14 @@ function TimelineRow({
   item,
   actions,
   onReorder,
+  selected,
+  onSelect,
 }: {
   item: TimelineEntry;
   actions?: ReactNode;
   onReorder?: (item: TimelineEntry, direction: "up" | "down") => void;
+  selected?: boolean;
+  onSelect?: (id: string) => void;
 }) {
   const Icon = item.kind === "place" ? MapPin : BedDouble;
   return (
@@ -96,9 +106,21 @@ function TimelineRow({
         ) : null}
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-base font-medium" data-testid="timeline-name">
-          {item.name}
-        </p>
+        {onSelect ? (
+          <button
+            type="button"
+            id={`timeline-${item.id}`}
+            className={`text-left text-base font-medium ${selected ? "text-primary" : ""}`}
+            aria-current={selected ? "true" : undefined}
+            onClick={() => onSelect(item.id)}
+          >
+            {item.name}
+          </button>
+        ) : (
+          <p className="text-base font-medium" data-testid="timeline-name">
+            {item.name}
+          </p>
+        )}
         <p className="text-sm text-muted-foreground">
           {item.area}
           {item.note ? ` · ${item.note}` : ""}

@@ -1,6 +1,7 @@
 import { motion, useReducedMotion } from "motion/react";
 import { TripTimeline } from "@/components/trip-timeline";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { TextField } from "@/components/text-field";
 import type { AiFailure } from "@/lib/ai-client";
@@ -248,9 +249,18 @@ export function PlanScreen({
       ) : null}
 
       {phase.kind === "generating" || phase.kind === "retrying" ? (
-        <div className="flex items-center gap-3" role="status" aria-live="polite">
-          <Spinner />
-          <p className="text-sm">{phase.kind === "retrying" ? "正在重试" : "正在生成"}</p>
+        <div className="flex flex-col gap-4" role="status" aria-live="polite">
+          <div className="flex items-center gap-3">
+            <Spinner />
+            <p className="text-sm">{phase.kind === "retrying" ? "正在重试" : "正在生成"}</p>
+          </div>
+          <ol className="flex flex-col gap-1 text-sm text-muted-foreground">
+            <li>校验偏好</li>
+            <li>{phase.kind === "retrying" ? "按校验结果再起草" : "正在起草每一天"}</li>
+            <li>检查结构</li>
+          </ol>
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-24 w-full" />
         </div>
       ) : null}
 

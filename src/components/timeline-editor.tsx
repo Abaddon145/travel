@@ -20,7 +20,15 @@ import { notifyError, notifySuccess, notifyUndo } from "@/lib/feedback";
 type ConfirmState =
   { kind: "day"; day: DayView } | { kind: "item"; item: TimelineEntry } | null;
 
-export function TimelineEditor({ detail }: { detail: TripDetail }) {
+export function TimelineEditor({
+  detail,
+  selectedId,
+  onSelect,
+}: {
+  detail: TripDetail;
+  selectedId?: string | null;
+  onSelect?: (id: string) => void;
+}) {
   const [dayOpen, setDayOpen] = useState(false);
   const [editingDay, setEditingDay] = useState<DayView | null>(null);
   const [itemDayId, setItemDayId] = useState<string | null>(null);
@@ -85,6 +93,8 @@ export function TimelineEditor({ detail }: { detail: TripDetail }) {
       ) : (
         <TripTimeline
           days={detail.days}
+          selectedId={selectedId}
+          onSelect={onSelect}
           onReorder={(item, direction) => move.mutate({ id: item.id, direction })}
           renderDayActions={(day) => {
             const blocked = day.items.some((item) => item.locked);

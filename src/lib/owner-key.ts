@@ -18,7 +18,7 @@ export function clearOwnerKey() {
   localStorage.removeItem(STORAGE_KEY);
 }
 
-const gatedPath = /^\/api\/(?:paid|admin|auth|ai)(?:\/|$)/;
+const gatedPath = /^\/api\/(?:paid|admin|auth|ai|map)(?:\/|$)/;
 
 export function gatedHeaders(path: string, extra?: HeadersInit) {
   const headers = new Headers(extra);

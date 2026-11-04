@@ -15,3 +15,9 @@ OWNER_KEY_SHA256=
 # DeepSeek. Placeholder only. Set the real key with: npx wrangler secret put DEEPSEEK_API_KEY
 # Do not put a real key here. Base URL and model already live in wrangler.jsonc.
 DEEPSEEK_API_KEY=
+# Amap. Placeholders only. Set the real values with `npx wrangler secret put`.
+# AMAP_JS_KEY is a Web端 JS API key. AMAP_JS_SECURITY_CODE stays on the server.
+# AMAP_WEB_KEY is a Web服务 key. Do not commit any of them.
+AMAP_JS_KEY=
+AMAP_JS_SECURITY_CODE=
+AMAP_WEB_KEY=
