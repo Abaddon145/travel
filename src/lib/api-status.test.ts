@@ -12,13 +12,31 @@ describe("接口状态", () => {
   it("区分已连接、未配置、未授权、限流和错误", async () => {
     const fetchImpl = vi.fn();
     fetchImpl.mockResolvedValueOnce(jsonResponse(200, { auth: "connected" }));
-    await expect(readApiStatus(fetchImpl)).resolves.toEqual({ kind: "connected" });
+    await expect(readApiStatus(fetchImpl)).resolves.toEqual({
+      kind: "connected",
+      authMode: undefined,
+      configured: undefined,
+    });
 
-    fetchImpl.mockResolvedValueOnce(jsonResponse(200, { auth: "unconfigured" }));
-    await expect(readApiStatus(fetchImpl)).resolves.toEqual({ kind: "unconfigured" });
+    fetchImpl.mockResolvedValueOnce(
+      jsonResponse(200, {
+        auth: "unconfigured",
+        authMode: "owner-key",
+        configured: false,
+      }),
+    );
+    await expect(readApiStatus(fetchImpl)).resolves.toEqual({
+      kind: "unconfigured",
+      authMode: "owner-key",
+      configured: false,
+    });
 
     fetchImpl.mockResolvedValueOnce(jsonResponse(401, { auth: "unauthorized" }));
-    await expect(readApiStatus(fetchImpl)).resolves.toEqual({ kind: "unauthorized" });
+    await expect(readApiStatus(fetchImpl)).resolves.toEqual({
+      kind: "unauthorized",
+      authMode: undefined,
+      configured: undefined,
+    });
 
     fetchImpl.mockResolvedValueOnce(jsonResponse(429, { auth: "rate_limited" }));
     await expect(readApiStatus(fetchImpl)).resolves.toEqual({ kind: "rate_limited" });

@@ -5,6 +5,7 @@
   "compatibility_date": "2026-11-04",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "preview_urls": false,
   "upload_source_maps": true,
   "observability": {
     "enabled": true,
@@ -27,10 +28,21 @@
         "period": 60,
       },
     },
+    {
+      "name": "AUTH_FAILURE_LIMIT",
+      "namespace_id": "1002",
+      // Workers rate-limit periods can only be 10 or 60 seconds.
+      // 10 failures / 60 seconds per IP is the closest binding to 10 / 10 minutes.
+      "simple": {
+        "limit": 10,
+        "period": 60,
+      },
+    },
   ],
   "vars": {
     "ENVIRONMENT": "production",
     "ACCESS_DEV_BYPASS": "",
+    "AUTH_MODE": "owner-key",
     "TEAM_DOMAIN": "",
     "POLICY_AUD": "",
   },

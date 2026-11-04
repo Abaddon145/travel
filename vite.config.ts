@@ -51,6 +51,18 @@ export default defineConfig({
         clientsClaim: true,
         skipWaiting: true,
         cleanupOutdatedCaches: true,
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\//,
+            handler: "NetworkOnly",
+            method: "GET",
+          },
+          {
+            urlPattern: /\/api\//,
+            handler: "NetworkOnly",
+            method: "POST",
+          },
+        ],
       },
       devOptions: {
         enabled: true,

@@ -41,7 +41,9 @@ npm run dev
 
 `dev:api` 是 `wrangler dev`，地址 `http://127.0.0.1:8787`。Vite 把 `/api` 代理过去，浏览器仍访问 `https://127.0.0.1:43127`。
 
-把 `.dev.vars.example` 复制为 `.dev.vars`。这个文件已忽略，不要提交。生产环境的 `ENVIRONMENT` 是 `production`，因此 `ACCESS_DEV_BYPASS` 不会生效。允许名单邮箱只放在 Wrangler secret `ACCESS_ALLOWED_EMAIL` 里，不要写进前端。
+把 `.dev.vars.example` 复制为 `.dev.vars`。这个文件已忽略，不要提交。生产环境的 `ENVIRONMENT` 是 `production`，因此 `ACCESS_DEV_BYPASS` 不会生效。
+
+付费和管理接口现在用私人密钥。浏览器只把密钥放在这台设备上，Worker 只保存它的 SHA-256（Wrangler secret `OWNER_KEY_SHA256`），明文不要进仓库。Access JWT 仍留着，等账号可以开通 Zero Trust 后再切换。
 
 ## 部署到 GitHub
 
@@ -52,7 +54,9 @@ npm run dev
 - `CLOUDFLARE_API_TOKEN`：能编辑 Workers 脚本的账号令牌
 - `CLOUDFLARE_ACCOUNT_ID`：目标 Cloudflare 账号
 
-Access 应用配好后，再设置 Worker 变量 `TEAM_DOMAIN` 和 `POLICY_AUD`，并用 `npx wrangler secret put ACCESS_ALLOWED_EMAIL` 写入允许名单。不要把这些值放进 GitHub 密钥以外的提交。
+主人密钥由你在另一台机器上执行 `npx wrangler secret put OWNER_KEY_SHA256`，值是密钥的十六进制 SHA-256，不是明文。
+
+以后改回 Access：把 `wrangler.jsonc` 里的 `AUTH_MODE` 设为 `access`，填上明文变量 `TEAM_DOMAIN` 和 `POLICY_AUD`（不要放进 secret，否则部署容易把它们清掉），再 `npx wrangler secret put ACCESS_ALLOWED_EMAIL`。不要把这些值写进提交。
 
 `preview` 默认端口是 `43128`。
 

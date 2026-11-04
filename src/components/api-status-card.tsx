@@ -56,6 +56,29 @@ export function ApiStatusCard() {
   );
 }
 
+function describe(state: ApiUiState) {
+  if (state.authMode === "owner-key" && state.kind === "unconfigured") {
+    return {
+      title: "尚未配置私人密钥",
+      body: "生产环境还没有密钥指纹。在写入之前，付费接口保持关闭。",
+    };
+  }
+  if (
+    state.authMode === "owner-key" &&
+    state.configured &&
+    state.kind === "unauthorized"
+  ) {
+    return {
+      title: "私人密钥已配置",
+      body: "在下方验证这台设备。未通过之前，付费接口不会被调用。",
+    };
+  }
+  if (state.authMode === "access" && state.kind === "unconfigured") {
+    return copy.unconfigured;
+  }
+  return copy[state.kind];
+}
+
 function StatusBody({
   state,
   reduce,
@@ -65,7 +88,7 @@ function StatusBody({
   reduce: boolean;
   onRetry: () => void;
 }) {
-  const text = copy[state.kind];
+  const text = describe(state);
   const destructive = state.kind === "error" || state.kind === "unauthorized";
   return (
     <motion.div

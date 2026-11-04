@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiStatusCard } from "@/components/api-status-card";
+import { OwnerKeySection } from "@/components/owner-key-section";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -58,6 +59,8 @@ export function ProfilePage() {
             允许持久保存
           </Button>
         </div>
+        <Separator />
+        <OwnerKeySection />
         <Separator />
         <ApiStatusCard />
         <Separator />

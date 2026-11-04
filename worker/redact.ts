@@ -1,7 +1,8 @@
 const sensitiveKey =
-  /authorization|cookie|email|secret|token|password|api[-_]?key|jwt|assertion|cf-access/i;
+  /authorization|cookie|email|secret|token|password|api[-_]?key|jwt|assertion|cf-access|owner[-_]?key|x-lvxu-owner-key/i;
 
 const emailValue = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const bearerValue = /^bearer\s+\S+/i;
 
 function looksLikeSecret(value: string) {
   return value.length >= 24 && /^[A-Za-z0-9+/=_-]+$/.test(value);
@@ -21,7 +22,10 @@ export function redactForLog(value: unknown, depth = 0): unknown {
     }
     return output;
   }
-  if (typeof value === "string" && (emailValue.test(value) || looksLikeSecret(value))) {
+  if (
+    typeof value === "string" &&
+    (emailValue.test(value) || looksLikeSecret(value) || bearerValue.test(value))
+  ) {
     return "[redacted]";
   }
   return value;

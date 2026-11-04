@@ -24,7 +24,7 @@
 
 ## 06 Cloudflare 部署与 API 安全
 
-已完成。静态页面和 `/api/*` 在同一个 Worker 源站。付费路径校验 Access JWT，并按身份或 IP 限流。日志会去掉授权、cookie、邮箱和密钥。GitHub Actions 部署配置指向私有仓库。生成和地图仍未接入。
+已完成。静态页面和 `/api/*` 在同一个 Worker 源站。付费路径先用私人密钥，Access JWT 留到 Zero Trust 可以开通之后。日志会去掉授权、cookie、邮箱和密钥。GitHub Actions 部署配置指向私有仓库。生成和地图仍未接入。
 
 ## 07 DeepSeek 行程生成
 

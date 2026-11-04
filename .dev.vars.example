@@ -5,5 +5,10 @@ ACCESS_DEV_BYPASS=1
 # Allowlist address for the single personal user. Not a paid-upstream key.
 ACCESS_ALLOWED_EMAIL=
 # Leave empty until the Access application exists. Empty values fail closed.
+# These stay plain vars in wrangler.jsonc so deploys keep sending them.
 TEAM_DOMAIN=
 POLICY_AUD=
+# owner-key | access | either. Production wrangler.jsonc currently sets owner-key.
+AUTH_MODE=owner-key
+# Hex SHA-256 of the owner key. Placeholder only. Never commit the key or a real hash.
+OWNER_KEY_SHA256=
