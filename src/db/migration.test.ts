@@ -147,4 +147,21 @@ describe("v1 到 v2 迁移", () => {
     expect((await upgraded.places.get("p1"))?.mapSource).toBe("unverified");
     expect(upgraded.tables.some((table) => table.name === "mapRoutes")).toBe(true);
   });
+
+  it("版本 6 保留行程并增加路线选择", async () => {
+    const name = `v5-${crypto.randomUUID()}`;
+    const legacy = new Dexie(name);
+    legacy.version(5).stores({
+      trips: "id, updatedAt",
+      mapRoutes: "id, tripId, fromItemId, toItemId",
+    });
+    await legacy.open();
+    await legacy.table("trips").add({ id: "keep", title: "仍在" });
+    legacy.close();
+    const upgraded = new TravelDatabase(name, { seed: false });
+    opened.push(upgraded);
+    await upgraded.open();
+    expect((await upgraded.trips.get("keep"))?.title).toBe("仍在");
+    expect(upgraded.tables.some((table) => table.name === "routePicks")).toBe(true);
+  });
 });

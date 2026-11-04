@@ -1,4 +1,4 @@
-import type { StoredRoute } from "@/lib/route-status";
+import type { RoutePick, StoredRoute } from "@/lib/route-status";
 import { draftSchema } from "@shared/ai-schema";
 import type {
   Day,
@@ -684,6 +684,14 @@ export async function saveMapRoute(db: TravelDatabase, route: StoredRoute) {
 
 export async function readMapRoutes(db: TravelDatabase, tripId: string) {
   return db.mapRoutes.where("tripId").equals(tripId).toArray();
+}
+
+export async function saveRoutePick(db: TravelDatabase, pick: RoutePick) {
+  await db.routePicks.put(pick);
+}
+
+export async function readRoutePicks(db: TravelDatabase, tripId: string) {
+  return db.routePicks.where("tripId").equals(tripId).toArray();
 }
 
 export async function restoreVersion(db: TravelDatabase, versionId: string) {

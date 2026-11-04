@@ -34,6 +34,18 @@ export function routesForLeg(routes: StoredRoute[], fromItemId: string, toItemId
   return routes.filter((route) => route.fromItemId === fromItemId && route.toItemId === toItemId);
 }
 
+export type RoutePick = {
+  id: string;
+  tripId: string;
+  fromItemId: string;
+  toItemId: string;
+  mode: RouteMode;
+};
+
+export function chosenRouteMode(picked: RouteMode | null, routes: StoredRoute[]): RouteMode | null {
+  return picked ?? latestRouteMode(routes);
+}
+
 export function latestRouteMode(routes: StoredRoute[]): RouteMode | null {
   let latest: StoredRoute | null = null;
   for (const route of routes) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { latestRouteMode, presentRoute, transitHasNoTrack, type StoredRoute } from "@/lib/route-status";
+import { chosenRouteMode, latestRouteMode, presentRoute, transitHasNoTrack, type StoredRoute } from "@/lib/route-status";
 
 const now = Date.parse("2026-11-04T00:00:00Z");
 
@@ -66,6 +66,8 @@ describe("路段核实", () => {
     expect(presentRoute(transit, endpoints, now).detail).toBe("公交 3327 米 · 36 分钟");
     expect(presentRoute(walking, endpoints, now).detail).toBe("步行 3100 米 · 40 分钟");
     expect(latestRouteMode([driving, transit, walking])).toBe("walking");
+    expect(chosenRouteMode("driving", [driving, transit, walking])).toBe("driving");
+    expect(chosenRouteMode(null, [driving, transit, walking])).toBe("walking");
     expect(transitHasNoTrack(transit, presentRoute(transit, endpoints, now))).toBe(true);
   });
 });

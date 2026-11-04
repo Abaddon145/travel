@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { parseAmapPath, routeStroke } from "@/lib/amap-path";
+import { overviewFitPadding, parseAmapPath, routeFitPadding, routeStroke } from "@/lib/amap-path";
 
 type AmapMap = {
   add: (overlay: unknown) => void;
@@ -101,6 +101,7 @@ export function AmapCanvas({
             created.add(marker);
             overlays.push(marker);
           });
+          const markers = [...overlays];
           const path = parseAmapPath(lineRef.current).map(([lng, lat]) => new AMap.LngLat(lng, lat));
           if (path.length > 1) {
             const line = new AMap.Polyline({
@@ -118,8 +119,10 @@ export function AmapCanvas({
             });
             created.add(line);
             overlays.push(line);
+            created.setFitView([line], false, routeFitPadding);
+            return;
           }
-          created.setFitView(overlays, false, [24, 24, 24, 24]);
+          created.setFitView(markers, false, overviewFitPadding);
         };
         drawRef.current = draw;
         created.on("complete", draw);

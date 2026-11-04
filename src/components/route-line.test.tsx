@@ -1,8 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseAmapPath, routeStroke } from "@/lib/amap-path";
+import { AmapCanvas } from "@/components/amap-canvas";
 import { MapPanel } from "@/components/map-panel";
+import { overviewFitPadding, parseAmapPath, routeFitPadding, routeStroke } from "@/lib/amap-path";
 import { db } from "@/db/database";
 import type { TimelineEntry } from "@/domain/types";
 
@@ -16,7 +17,7 @@ type LineOptions = {
 
 const recorded = vi.hoisted(() => ({
   lines: [] as Array<{ options: LineOptions }>,
-  fits: [] as unknown[][],
+  fits: [] as Array<{ overlays: unknown[]; padding?: number[] }>,
 }));
 
 vi.mock("@amap/amap-jsapi-loader", () => {
@@ -56,8 +57,8 @@ vi.mock("@amap/amap-jsapi-loader", () => {
     on(event: string, handler: () => void) {
       if (event === "complete") handler();
     }
-    setFitView(overlays?: unknown[]) {
-      recorded.fits.push(overlays ?? []);
+    setFitView(overlays?: unknown[], _immediately?: boolean, padding?: number[]) {
+      recorded.fits.push({ overlays: overlays ?? [], padding });
     }
     destroy() {
       return undefined;
@@ -105,9 +106,35 @@ afterEach(async () => {
   recorded.lines.length = 0;
   recorded.fits.length = 0;
   await db.mapRoutes.where("tripId").equals("trip-line").delete();
+  await db.routePicks.where("tripId").equals("trip-line").delete();
 });
 
+const points = [
+  { id: "a", lng: 120.1, lat: 30.2, label: "白堤" },
+  { id: "b", lng: 120.16, lat: 30.26, label: "湖滨" },
+];
+
 describe("地图折线", () => {
+  it("选中折线时贴合路线，没有选中时回到总览", async () => {
+    const view = render(<AmapCanvas apiKey="js-key" points={points} polyline="" onSelect={vi.fn()} />);
+    await waitFor(() => {
+      expect(recorded.fits.at(-1)?.overlays).toHaveLength(2);
+      expect(recorded.fits.at(-1)?.padding).toEqual(overviewFitPadding);
+    });
+    view.rerender(
+      <AmapCanvas apiKey="js-key" points={points} polyline="120.10,30.20;120.12,30.22" onSelect={vi.fn()} />,
+    );
+    await waitFor(() => {
+      expect(recorded.fits.at(-1)?.overlays).toEqual([recorded.lines.at(-1)]);
+      expect(recorded.fits.at(-1)?.padding).toEqual(routeFitPadding);
+    });
+    view.rerender(<AmapCanvas apiKey="js-key" points={points} polyline="" onSelect={vi.fn()} />);
+    await waitFor(() => {
+      expect(recorded.fits.at(-1)?.overlays).toHaveLength(2);
+      expect(recorded.fits.at(-1)?.padding).toEqual(overviewFitPadding);
+    });
+  });
+
   it("按经度、纬度解析高德坐标串", () => {
     expect(parseAmapPath("120.15,30.26;bad;120.16,30.27;120.16,30.27")).toEqual([
       [120.15, 30.26],
@@ -172,7 +199,8 @@ describe("地图折线", () => {
       strokeWeight: 6,
       zIndex: 120,
     });
-    expect(recorded.fits.at(-1)).toContain(driving);
+    expect(recorded.fits.at(-1)?.overlays).toEqual([driving]);
+    expect(recorded.fits.at(-1)?.padding).toEqual(routeFitPadding);
 
     await userEvent.click(screen.getByRole("button", { name: "核实步行" }));
     await waitFor(() => {

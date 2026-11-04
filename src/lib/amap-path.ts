@@ -1,5 +1,10 @@
 export const routeStroke = "#8c4a32";
 
+/** iPhone map is about 224px tall. Keep a selected line off the edges. */
+export const routeFitPadding = [36, 44, 28, 28];
+
+export const overviewFitPadding = [24, 24, 16, 16];
+
 export function parseAmapPath(polyline: string): Array<[number, number]> {
   const path: Array<[number, number]> = [];
   for (const pair of polyline.split(";")) {

@@ -3,12 +3,12 @@ import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { AmapCanvas } from "@/components/amap-canvas";
 import { Button } from "@/components/ui/button";
-import { attachMapMatch, readMapRoutes, saveMapRoute } from "@/db/repository";
+import { attachMapMatch, readMapRoutes, readRoutePicks, saveMapRoute, saveRoutePick } from "@/db/repository";
 import { db } from "@/db/database";
 import type { TimelineEntry } from "@/domain/types";
 import { fetchMapRoute, geocodeCity, loadMapConfig, searchPlaces, type PoiCandidate } from "@/lib/map-client";
 import {
-  latestRouteMode,
+  chosenRouteMode,
   presentRoute,
   routeModes,
   routesForLeg,
@@ -40,8 +40,8 @@ export function MapPanel({
   const [message, setMessage] = useState("");
   const [candidates, setCandidates] = useState<PoiCandidate[]>([]);
   const [matchingId, setMatchingId] = useState<string | null>(null);
-  const [picked, setPicked] = useState<Record<string, RouteMode>>({});
   const routes = useLiveQuery(() => readMapRoutes(db, tripId), [tripId]) ?? [];
+  const picks = useLiveQuery(() => readRoutePicks(db, tripId), [tripId]) ?? [];
 
   async function openMap() {
     setOpen(true);
@@ -84,12 +84,22 @@ export function MapPanel({
     setMatchingId(null);
   }
 
+  function pickedMode(fromId: string, toId: string): RouteMode | null {
+    return picks.find((pick) => pick.fromItemId === fromId && pick.toItemId === toId)?.mode ?? null;
+  }
+
   function choose(fromId: string, toId: string, mode: RouteMode) {
-    setPicked((current) => ({ ...current, [`${fromId}:${toId}`]: mode }));
+    return saveRoutePick(db, {
+      id: `${fromId}:${toId}`,
+      tripId,
+      fromItemId: fromId,
+      toItemId: toId,
+      mode,
+    });
   }
 
   async function verify(from: TimelineEntry, to: TimelineEntry, mode: RouteMode) {
-    choose(from.id, to.id, mode);
+    await choose(from.id, to.id, mode);
     if (from.amapLng == null || from.amapLat == null || to.amapLng == null || to.amapLat == null) {
       setMessage("先核对两端地点，才能查询路线。");
       return;
@@ -134,7 +144,7 @@ export function MapPanel({
     selectedItem && selectedNext ? routesForLeg(routes, selectedItem.id, selectedNext.id) : [];
   const selectedMode =
     selectedItem && selectedNext
-      ? (picked[`${selectedItem.id}:${selectedNext.id}`] ?? latestRouteMode(selectedLeg))
+      ? chosenRouteMode(pickedMode(selectedItem.id, selectedNext.id), selectedLeg)
       : null;
   const selectedRoute = selectedMode
     ? (selectedLeg.find((route) => route.mode === selectedMode) ?? null)
@@ -180,7 +190,7 @@ export function MapPanel({
         {items.map((item, index) => {
           const next = items[index + 1];
           const leg = next ? routesForLeg(routes, item.id, next.id) : [];
-          const active = next ? (picked[`${item.id}:${next.id}`] ?? latestRouteMode(leg)) : null;
+          const active = next ? chosenRouteMode(pickedMode(item.id, next.id), leg) : null;
           return (
             <li key={item.id} className="flex flex-col gap-2">
               <button
@@ -215,11 +225,11 @@ export function MapPanel({
                   active={active}
                   onSelect={(mode) => {
                     onSelect(item.id);
-                    choose(item.id, next.id, mode);
+                    return choose(item.id, next.id, mode);
                   }}
                   onVerify={(mode) => {
                     onSelect(item.id);
-                    void verify(item, next, mode);
+                    return verify(item, next, mode);
                   }}
                 />
               ) : null}
@@ -250,8 +260,8 @@ function LegModes({
   to: TimelineEntry;
   routes: StoredRoute[];
   active: RouteMode | null;
-  onSelect: (mode: RouteMode) => void;
-  onVerify: (mode: RouteMode) => void;
+  onSelect: (mode: RouteMode) => void | Promise<void>;
+  onVerify: (mode: RouteMode) => void | Promise<void>;
 }) {
   const endpoints = { fromPoiId: from.amapPoiId ?? "", toPoiId: to.amapPoiId ?? "" };
   const stored = routeModes.flatMap((mode) => {
@@ -277,7 +287,7 @@ function LegModes({
                     "flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm text-pretty",
                     active === mode ? "bg-primary/10 font-medium text-foreground" : "text-muted-foreground",
                   )}
-                  onClick={() => onSelect(mode)}
+                  onClick={() => void onSelect(mode)}
                 >
                   {presentation.detail ?? presentation.label}
                   {missing ? " · 公交线路无轨迹" : ""}
@@ -294,7 +304,7 @@ function LegModes({
             type="button"
             variant="ghost"
             className="h-11 w-full rounded-none px-1"
-            onClick={() => onVerify(mode)}
+            onClick={() => void onVerify(mode)}
           >
             {verifyLabel[mode]}
           </Button>

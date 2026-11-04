@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MapPanel } from "@/components/map-panel";
 import { db } from "@/db/database";
+import { saveMapRoute } from "@/db/repository";
 import type { TimelineEntry } from "@/domain/types";
 
 vi.mock("@/components/amap-canvas", () => ({
@@ -26,6 +27,7 @@ const item: TimelineEntry = {
 afterEach(async () => {
   vi.unstubAllGlobals();
   await db.mapRoutes.clear();
+  await db.routePicks.clear();
 });
 
 function json(body: unknown, status = 200) {
@@ -130,8 +132,56 @@ describe("地图面板", () => {
     expect(screen.getByTestId("map-polyline")).toHaveTextContent("120.10,30.20;120.18,30.28");
 
     await userEvent.click(screen.getByRole("button", { name: "驾车 2629 米 · 8 分钟" }));
-    expect(screen.getByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "核实驾车" })).not.toHaveAttribute("aria-pressed");
     expect(screen.getByTestId("map-polyline")).toHaveTextContent("120.10,30.20;120.12,30.22");
+  });
+
+  it("重新打开后仍选中手动指定的方式，而不是最近一次核实", async () => {
+    const now = Date.now();
+    await saveMapRoute(db, {
+      id: "from:to:driving",
+      tripId: "trip-pick",
+      fromItemId: "from",
+      toItemId: "to",
+      mode: "driving",
+      ok: true,
+      distanceMeters: 2629,
+      durationSeconds: 480,
+      polyline: "120.10,30.20;120.12,30.22",
+      fetchedAt: now,
+      fromPoiId: "poi-from",
+      toPoiId: "poi-to",
+    });
+    await saveMapRoute(db, {
+      id: "from:to:walking",
+      tripId: "trip-pick",
+      fromItemId: "from",
+      toItemId: "to",
+      mode: "walking",
+      ok: true,
+      distanceMeters: 2218,
+      durationSeconds: 1800,
+      polyline: "120.10,30.20;120.18,30.28",
+      fetchedAt: now - 60_000,
+      fromPoiId: "poi-from",
+      toPoiId: "poi-to",
+    });
+    const props = {
+      tripId: "trip-pick",
+      destination: "杭州",
+      items: [stop("from", "白堤", 120.1), stop("to", "湖滨小馆", 120.16)],
+      selectedId: "from",
+      onSelect: vi.fn(),
+    };
+    const view = render(<MapPanel {...props} />);
+    expect(await screen.findByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: "步行 2218 米 · 30 分钟" }));
+    expect(await screen.findByRole("button", { name: "步行 2218 米 · 30 分钟" })).toHaveAttribute("aria-pressed", "true");
+    view.unmount();
+    render(<MapPanel {...props} />);
+    expect(await screen.findByRole("button", { name: "步行 2218 米 · 30 分钟" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toHaveAttribute("aria-pressed", "false");
+    expect(await db.routePicks.get("from:to")).toMatchObject({ mode: "walking" });
   });
 });
