@@ -1,0 +1,31 @@
+import "fake-indexeddb/auto";
+
+if (typeof document !== "undefined") {
+  await import("@testing-library/jest-dom/vitest");
+}
+
+if (typeof navigator !== "undefined" && !("storage" in navigator)) {
+  Object.defineProperty(navigator, "storage", {
+    configurable: true,
+    value: {
+      persist: async () => true,
+      persisted: async () => false,
+    },
+  });
+}
+
+if (typeof window !== "undefined") {
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: (query: string) => ({
+    matches: query.includes("prefers-reduced-motion"),
+    media: query,
+    onchange: null,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+    dispatchEvent: () => false,
+  }),
+});
+}
