@@ -142,6 +142,7 @@ function routePolyline(path: Record<string, unknown>) {
       pushRecord(lines, record.taxi);
     }
   }
+  if (lines.length === 0) pushLine(lines, polylineText(path));
   return lines.join(";").slice(0, POLYLINE_LIMIT);
 }
 
@@ -152,8 +153,9 @@ export function parseRoute(payload: unknown, mode: AmapRoute["mode"]): AmapRoute
   if (!/^\d+$/.test(distanceText)) return null;
   const distance = Number(distanceText);
   const cost = path.cost;
-  const durationText =
+  const costDuration =
     cost && typeof cost === "object" ? text((cost as { duration?: unknown }).duration) : "";
+  const durationText = /^\d+$/.test(costDuration) ? costDuration : text(path.duration);
   const duration = /^\d+$/.test(durationText) ? Number(durationText) : null;
   return {
     mode,

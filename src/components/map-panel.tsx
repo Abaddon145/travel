@@ -292,9 +292,8 @@ function LegModes({
           <Button
             key={mode}
             type="button"
-            variant={active === mode ? "default" : "ghost"}
+            variant="ghost"
             className="h-11 w-full rounded-none px-1"
-            aria-pressed={active === mode}
             onClick={() => onVerify(mode)}
           >
             {verifyLabel[mode]}

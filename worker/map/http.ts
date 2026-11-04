@@ -150,24 +150,27 @@ async function regeo(fetchImpl: typeof fetch, key: string, params: Record<string
 async function route(fetchImpl: typeof fetch, key: string, params: Record<string, string>) {
   const parsed = routeSchema.safeParse(params);
   if (!parsed.success) return json({ error: "validation_error", message: "路线参数不正确" }, 422);
-  const path =
-    parsed.data.mode === "walking"
-      ? "/v5/direction/walking"
-      : parsed.data.mode === "driving"
-        ? "/v5/direction/driving"
-        : "/v5/direction/transit/integrated";
+  if (parsed.data.mode === "transit") {
+    if (!parsed.data.city) {
+      return json({ error: "validation_error", message: "公交需要城市编码" }, 422);
+    }
+    const result = await call(fetchImpl, key, "/v3/direction/transit/integrated", {
+      origin: parsed.data.origin,
+      destination: parsed.data.destination,
+      city: parsed.data.city,
+      extensions: "all",
+    });
+    if (!result.ok) return json(result, statusFor(result.error));
+    const routeResult = parseRoute(result.payload, parsed.data.mode);
+    if (!routeResult) return json({ error: "not_found", message: "高德没有返回可用路线" }, 404);
+    return json({ route: routeResult, fetchedAt: Date.now() });
+  }
+  const path = parsed.data.mode === "walking" ? "/v5/direction/walking" : "/v5/direction/driving";
   const query: Record<string, string> = {
     origin: parsed.data.origin,
     destination: parsed.data.destination,
     show_fields: "cost,polyline",
   };
-  if (parsed.data.mode === "transit") {
-    if (!parsed.data.city) {
-      return json({ error: "validation_error", message: "公交需要城市编码" }, 422);
-    }
-    query.city1 = parsed.data.city;
-    query.city2 = parsed.data.city;
-  }
   const result = await call(fetchImpl, key, path, query);
   if (!result.ok) return json(result, statusFor(result.error));
   const routeResult = parseRoute(result.payload, parsed.data.mode);

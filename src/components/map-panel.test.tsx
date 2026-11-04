@@ -125,11 +125,13 @@ describe("地图面板", () => {
     expect(await screen.findByRole("button", { name: "步行 3100 米 · 40 分钟" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "公交 3327 米 · 36 分钟 · 公交线路无轨迹" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "核实步行" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "步行 3100 米 · 40 分钟" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "核实步行" })).not.toHaveAttribute("aria-pressed");
     expect(screen.getByTestId("map-polyline")).toHaveTextContent("120.10,30.20;120.18,30.28");
 
     await userEvent.click(screen.getByRole("button", { name: "驾车 2629 米 · 8 分钟" }));
-    expect(screen.getByRole("button", { name: "核实驾车" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "核实驾车" })).not.toHaveAttribute("aria-pressed");
     expect(screen.getByTestId("map-polyline")).toHaveTextContent("120.10,30.20;120.12,30.22");
   });
 });

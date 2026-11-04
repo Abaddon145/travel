@@ -126,6 +126,34 @@ describe("高德 REST", () => {
     expect(route).toMatchObject({ distanceMeters: 3327, durationSeconds: 2159, polyline: "" });
   });
 
+  it("v3 公交用方案 duration，并保留 buslines 折线", () => {
+    const route = parseRoute(
+      {
+        route: {
+          transits: [
+            {
+              distance: "3327",
+              duration: "2159",
+              segments: [
+                {
+                  walking: { steps: [{ polyline: "120.14,30.25;120.15,30.25" }] },
+                  bus: { buslines: [{ name: "地铁1号线", polyline: "120.15,30.25;120.16,30.26" }] },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "transit",
+    );
+    expect(route).toEqual({
+      mode: "transit",
+      distanceMeters: 3327,
+      durationSeconds: 2159,
+      polyline: "120.14,30.25;120.15,30.25;120.15,30.25;120.16,30.26",
+    });
+  });
+
   it("失败的 infocode 不会当成成功", async () => {
     const result = await amapGet({
       fetchImpl: vi.fn(async () => payload({ status: "0", infocode: "10009" })) as unknown as typeof fetch,
