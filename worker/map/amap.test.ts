@@ -56,8 +56,74 @@ describe("高德 REST", () => {
       },
       "walking",
     );
-    expect(route).toMatchObject({ distanceMeters: 860, durationSeconds: 720 });
+    expect(route).toMatchObject({
+      distanceMeters: 860,
+      durationSeconds: 720,
+      polyline: "135.1,34.9;135.2,35.0",
+    });
     expect(parseRoute({ route: { paths: [{}] } }, "walking")).toBeNull();
+  });
+
+  it("公交轨迹由步行和乘车分段折线拼成", () => {
+    const route = parseRoute(
+      {
+        route: {
+          transits: [
+            {
+              distance: "3327",
+              cost: { duration: "2159" },
+              segments: [
+                {
+                  walking: { steps: [{ polyline: "120.10,30.20;120.11,30.21" }] },
+                  bus: {
+                    steps: [{ polyline: "120.11,30.21;120.15,30.22" }],
+                    buslines: [{ type: "地铁线路", polyline: "120.15,30.22;120.20,30.25" }],
+                  },
+                },
+                {
+                  railway: { steps: [{ polyline: "120.20,30.25;120.30,30.30" }] },
+                  taxi: { polyline: "120.30,30.30;120.31,30.31" },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "transit",
+    );
+    expect(route).toMatchObject({ distanceMeters: 3327, durationSeconds: 2159 });
+    expect(route?.polyline).toBe(
+      [
+        "120.10,30.20;120.11,30.21",
+        "120.11,30.21;120.15,30.22",
+        "120.15,30.22;120.20,30.25",
+        "120.20,30.25;120.30,30.30",
+        "120.30,30.30;120.31,30.31",
+      ].join(";"),
+    );
+  });
+
+  it("公交没有分段折线时不编造轨迹", () => {
+    const route = parseRoute(
+      {
+        route: {
+          transits: [
+            {
+              distance: "3327",
+              cost: { duration: "2159" },
+              segments: [
+                {
+                  walking: { steps: [{ instruction: "步行" }] },
+                  bus: { buslines: [{ name: "1路" }] },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "transit",
+    );
+    expect(route).toMatchObject({ distanceMeters: 3327, durationSeconds: 2159, polyline: "" });
   });
 
   it("失败的 infocode 不会当成成功", async () => {

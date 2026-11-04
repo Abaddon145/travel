@@ -7,7 +7,16 @@ import { attachMapMatch, readMapRoutes, saveMapRoute } from "@/db/repository";
 import { db } from "@/db/database";
 import type { TimelineEntry } from "@/domain/types";
 import { fetchMapRoute, geocodeCity, loadMapConfig, searchPlaces, type PoiCandidate } from "@/lib/map-client";
-import { presentRoute, type RouteMode } from "@/lib/route-status";
+import {
+  latestRouteMode,
+  presentRoute,
+  routeModes,
+  routesForLeg,
+  transitHasNoTrack,
+  type RouteMode,
+  type StoredRoute,
+} from "@/lib/route-status";
+import { cn } from "cn";
 
 export type MapPhase = "closed" | "offline" | "not_configured" | "unauthorized" | "loading" | "ready" | "error";
 
@@ -31,6 +40,7 @@ export function MapPanel({
   const [message, setMessage] = useState("");
   const [candidates, setCandidates] = useState<PoiCandidate[]>([]);
   const [matchingId, setMatchingId] = useState<string | null>(null);
+  const [picked, setPicked] = useState<Record<string, RouteMode>>({});
   const routes = useLiveQuery(() => readMapRoutes(db, tripId), [tripId]) ?? [];
 
   async function openMap() {
@@ -74,7 +84,12 @@ export function MapPanel({
     setMatchingId(null);
   }
 
+  function choose(fromId: string, toId: string, mode: RouteMode) {
+    setPicked((current) => ({ ...current, [`${fromId}:${toId}`]: mode }));
+  }
+
   async function verify(from: TimelineEntry, to: TimelineEntry, mode: RouteMode) {
+    choose(from.id, to.id, mode);
     if (from.amapLng == null || from.amapLat == null || to.amapLng == null || to.amapLat == null) {
       setMessage("先核对两端地点，才能查询路线。");
       return;
@@ -112,11 +127,24 @@ export function MapPanel({
       ? []
       : [{ id: item.id, lng: item.amapLng, lat: item.amapLat, label: item.name }],
   );
-  const selectedRoute = routes.find((route) => route.fromItemId === selectedId);
-  const shown = presentRoute(
-    selectedRoute ?? null,
-    { fromPoiId: selectedRoute?.fromPoiId ?? "", toPoiId: selectedRoute?.toPoiId ?? "" },
-  );
+  const selectedIndex = items.findIndex((item) => item.id === selectedId);
+  const selectedItem = selectedIndex >= 0 ? items[selectedIndex] : undefined;
+  const selectedNext = selectedIndex >= 0 ? items[selectedIndex + 1] : undefined;
+  const selectedLeg =
+    selectedItem && selectedNext ? routesForLeg(routes, selectedItem.id, selectedNext.id) : [];
+  const selectedMode =
+    selectedItem && selectedNext
+      ? (picked[`${selectedItem.id}:${selectedNext.id}`] ?? latestRouteMode(selectedLeg))
+      : null;
+  const selectedRoute = selectedMode
+    ? (selectedLeg.find((route) => route.mode === selectedMode) ?? null)
+    : null;
+  const selectedPresentation = presentRoute(selectedRoute, {
+    fromPoiId: selectedItem?.amapPoiId ?? "",
+    toPoiId: selectedNext?.amapPoiId ?? "",
+  });
+  const selectedLine = selectedPresentation.status === "verified" ? (selectedRoute?.polyline ?? "") : "";
+  const selectedMissingTrack = transitHasNoTrack(selectedRoute, selectedPresentation);
 
   return (
     <motion.section
@@ -139,24 +167,20 @@ export function MapPanel({
           {phase === "loading" ? <p className="px-3 py-6 text-sm">正在加载地图。</p> : null}
           {phase === "error" ? <p className="px-3 py-6 text-sm">地图暂时无法加载。</p> : null}
           {phase === "ready" ? (
-            <AmapCanvas
-              apiKey={apiKey}
-              points={points}
-              polyline={shown.status === "verified" ? (selectedRoute?.polyline ?? "") : ""}
-              onSelect={onSelect}
-            />
+            <>
+              <AmapCanvas apiKey={apiKey} points={points} polyline={selectedLine} onSelect={onSelect} />
+              {selectedMissingTrack ? (
+                <p className="px-3 py-2 text-sm text-muted-foreground">公交线路无轨迹</p>
+              ) : null}
+            </>
           ) : null}
         </div>
       ) : null}
       <ul className="flex flex-col gap-3">
         {items.map((item, index) => {
           const next = items[index + 1];
-          const pair = next
-            ? routes.find((route) => route.fromItemId === item.id && route.toItemId === next.id) ?? null
-            : null;
-          const presentation = next
-            ? presentRoute(pair, { fromPoiId: item.amapPoiId ?? "", toPoiId: next.amapPoiId ?? "" })
-            : null;
+          const leg = next ? routesForLeg(routes, item.id, next.id) : [];
+          const active = next ? (picked[`${item.id}:${next.id}`] ?? latestRouteMode(leg)) : null;
           return (
             <li key={item.id} className="flex flex-col gap-2">
               <button
@@ -183,22 +207,21 @@ export function MapPanel({
                   核对地点
                 </Button>
               )}
-              {presentation && next ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-sm text-muted-foreground">
-                    {presentation.label}
-                    {presentation.detail ? ` · ${presentation.detail}` : ""}
-                  </p>
-                  <Button type="button" variant="outline" className="h-11" onClick={() => void verify(item, next, "walking")}>
-                    核实步行
-                  </Button>
-                  <Button type="button" variant="outline" className="h-11" onClick={() => void verify(item, next, "driving")}>
-                    核实驾车
-                  </Button>
-                  <Button type="button" variant="outline" className="h-11" onClick={() => void verify(item, next, "transit")}>
-                    核实公交
-                  </Button>
-                </div>
+              {next ? (
+                <LegModes
+                  from={item}
+                  to={next}
+                  routes={leg}
+                  active={active}
+                  onSelect={(mode) => {
+                    onSelect(item.id);
+                    choose(item.id, next.id, mode);
+                  }}
+                  onVerify={(mode) => {
+                    onSelect(item.id);
+                    void verify(item, next, mode);
+                  }}
+                />
               ) : null}
             </li>
           );
@@ -206,5 +229,78 @@ export function MapPanel({
       </ul>
       {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
     </motion.section>
+  );
+}
+
+const verifyLabel: Record<RouteMode, string> = {
+  walking: "核实步行",
+  driving: "核实驾车",
+  transit: "核实公交",
+};
+
+function LegModes({
+  from,
+  to,
+  routes,
+  active,
+  onSelect,
+  onVerify,
+}: {
+  from: TimelineEntry;
+  to: TimelineEntry;
+  routes: StoredRoute[];
+  active: RouteMode | null;
+  onSelect: (mode: RouteMode) => void;
+  onVerify: (mode: RouteMode) => void;
+}) {
+  const endpoints = { fromPoiId: from.amapPoiId ?? "", toPoiId: to.amapPoiId ?? "" };
+  const stored = routeModes.flatMap((mode) => {
+    const route = routes.find((item) => item.mode === mode);
+    return route ? [{ mode, route }] : [];
+  });
+
+  return (
+    <div className="flex flex-col gap-2">
+      {stored.length === 0 ? (
+        <p className="text-sm text-muted-foreground">未核实</p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {stored.map(({ mode, route }) => {
+            const presentation = presentRoute(route, endpoints);
+            const missing = transitHasNoTrack(route, presentation);
+            return (
+              <li key={mode}>
+                <button
+                  type="button"
+                  aria-pressed={active === mode}
+                  className={cn(
+                    "flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm text-pretty",
+                    active === mode ? "bg-primary/10 font-medium text-foreground" : "text-muted-foreground",
+                  )}
+                  onClick={() => onSelect(mode)}
+                >
+                  {presentation.detail ?? presentation.label}
+                  {missing ? " · 公交线路无轨迹" : ""}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <div role="group" aria-label="核实路线" className="grid grid-cols-3 overflow-hidden rounded-lg border">
+        {routeModes.map((mode) => (
+          <Button
+            key={mode}
+            type="button"
+            variant={active === mode ? "default" : "ghost"}
+            className="h-11 w-full rounded-none px-1"
+            aria-pressed={active === mode}
+            onClick={() => onVerify(mode)}
+          >
+            {verifyLabel[mode]}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -28,6 +28,24 @@ const modeLabel: Record<RouteMode, string> = {
   transit: "公交",
 };
 
+export const routeModes: RouteMode[] = ["walking", "driving", "transit"];
+
+export function routesForLeg(routes: StoredRoute[], fromItemId: string, toItemId: string) {
+  return routes.filter((route) => route.fromItemId === fromItemId && route.toItemId === toItemId);
+}
+
+export function latestRouteMode(routes: StoredRoute[]): RouteMode | null {
+  let latest: StoredRoute | null = null;
+  for (const route of routes) {
+    if (!latest || route.fetchedAt >= latest.fetchedAt) latest = route;
+  }
+  return latest?.mode ?? null;
+}
+
+export function transitHasNoTrack(route: StoredRoute | null, presentation: RoutePresentation) {
+  return presentation.status === "verified" && route?.mode === "transit" && route.polyline.trim() === "";
+}
+
 export function presentRoute(
   route: StoredRoute | null,
   endpoints: { fromPoiId: string; toPoiId: string },

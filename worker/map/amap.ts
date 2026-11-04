@@ -88,6 +88,8 @@ export function parsePois(payload: unknown): AmapPoi[] {
   return result;
 }
 
+const POLYLINE_LIMIT = 16000;
+
 function firstPath(payload: unknown) {
   const route = (payload as { route?: { paths?: unknown; transits?: unknown } }).route;
   const paths = route?.paths;
@@ -95,6 +97,52 @@ function firstPath(payload: unknown) {
   const list = Array.isArray(paths) ? paths : Array.isArray(transits) ? transits : [];
   const first = list[0];
   return first && typeof first === "object" ? (first as Record<string, unknown>) : null;
+}
+
+function polylineText(value: unknown) {
+  if (!value || typeof value !== "object") return "";
+  return text((value as { polyline?: unknown }).polyline);
+}
+
+function pushLine(lines: string[], line: string) {
+  if (!line || lines.at(-1) === line) return;
+  lines.push(line);
+}
+
+function pushSteps(lines: string[], steps: unknown) {
+  if (!Array.isArray(steps)) return;
+  for (const step of steps) pushLine(lines, polylineText(step));
+}
+
+function pushRecord(lines: string[], value: unknown) {
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  const before = lines.length;
+  pushSteps(lines, record.steps);
+  if (Array.isArray(record.buslines)) {
+    for (const line of record.buslines) {
+      const nested = lines.length;
+      if (line && typeof line === "object") pushSteps(lines, (line as { steps?: unknown }).steps);
+      if (lines.length === nested) pushLine(lines, polylineText(line));
+    }
+  }
+  if (lines.length === before) pushLine(lines, polylineText(record));
+}
+
+function routePolyline(path: Record<string, unknown>) {
+  const lines: string[] = [];
+  pushSteps(lines, path.steps);
+  if (Array.isArray(path.segments)) {
+    for (const segment of path.segments) {
+      if (!segment || typeof segment !== "object") continue;
+      const record = segment as Record<string, unknown>;
+      pushRecord(lines, record.walking);
+      pushRecord(lines, record.bus);
+      pushRecord(lines, record.railway);
+      pushRecord(lines, record.taxi);
+    }
+  }
+  return lines.join(";").slice(0, POLYLINE_LIMIT);
 }
 
 export function parseRoute(payload: unknown, mode: AmapRoute["mode"]): AmapRoute | null {
@@ -107,12 +155,12 @@ export function parseRoute(payload: unknown, mode: AmapRoute["mode"]): AmapRoute
   const durationText =
     cost && typeof cost === "object" ? text((cost as { duration?: unknown }).duration) : "";
   const duration = /^\d+$/.test(durationText) ? Number(durationText) : null;
-  const steps = Array.isArray(path.steps) ? path.steps : [];
-  const polyline = steps
-    .map((step) => (step && typeof step === "object" ? text((step as { polyline?: unknown }).polyline) : ""))
-    .filter(Boolean)
-    .join(";");
-  return { mode, distanceMeters: distance, durationSeconds: duration, polyline: polyline.slice(0, 8000) };
+  return {
+    mode,
+    distanceMeters: distance,
+    durationSeconds: duration,
+    polyline: routePolyline(path),
+  };
 }
 
 export async function amapGet(input: {
