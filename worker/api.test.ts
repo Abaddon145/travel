@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from "vitest";
+import { handleApi } from "./api";
 import type { GateEnv } from "./owner-key";
 import { sha256Bytes } from "./owner-key";
-import { handleApi } from "./api";
 
 const env: GateEnv = {
   ENVIRONMENT: "production",
@@ -248,5 +248,21 @@ describe("私人密钥门禁", () => {
     );
     expect((await byJwt.response).status).toBe(200);
     expect(byJwt.verifyJwt).toHaveBeenCalledOnce();
+  });
+
+  it("未通过门禁时不会调用生成", async () => {
+    const handleAi = vi.fn();
+    const response = await handleApi(
+      new Request("https://lvxu.test/api/ai/itinerary", { method: "POST" }),
+      { ...env, AUTH_MODE: "owner-key", OWNER_KEY_SHA256: "" },
+      {
+        verifyJwt: vi.fn(),
+        limit: vi.fn(async () => ({ success: true })),
+        log: vi.fn(),
+        handleAi,
+      },
+    );
+    expect(response.status).toBe(401);
+    expect(handleAi).not.toHaveBeenCalled();
   });
 });

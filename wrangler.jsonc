@@ -39,12 +39,30 @@
       },
     },
   ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "AI_USAGE",
+        "class_name": "AiUsageLedger"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1-ai-usage",
+      "new_sqlite_classes": ["AiUsageLedger"]
+    }
+  ],
   "vars": {
     "ENVIRONMENT": "production",
     "ACCESS_DEV_BYPASS": "",
     "AUTH_MODE": "owner-key",
     "TEAM_DOMAIN": "",
     "POLICY_AUD": "",
+    "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
+    "DEEPSEEK_MODEL": "deepseek-flash",
+    "AI_DAILY_REQUEST_CAP": "30",
+    "AI_DAILY_TOKEN_CAP": "100000"
   },
   "secrets": {
     "required": ["ACCESS_ALLOWED_EMAIL"],

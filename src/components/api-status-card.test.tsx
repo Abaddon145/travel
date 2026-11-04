@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MotionConfig } from "motion/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiStatusCard } from "@/components/api-status-card";
+import { clearOwnerKey, saveOwnerKey } from "@/lib/owner-key";
 
 function renderCard() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -16,6 +17,7 @@ function renderCard() {
 }
 
 afterEach(() => {
+  clearOwnerKey();
   vi.unstubAllGlobals();
 });
 
@@ -48,5 +50,29 @@ describe("云端接口状态", () => {
     renderCard();
     expect(await screen.findByText("请求过于频繁")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "重试" })).toBeEnabled();
+  });
+
+  it("私人密钥通过后显示已验证", async () => {
+    saveOwnerKey("device-key");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.includes("/api/auth/check")) {
+          return new Response(JSON.stringify({ ok: true }), { status: 200 });
+        }
+        return new Response(
+          JSON.stringify({
+            auth: "unauthorized",
+            authMode: "owner-key",
+            configured: true,
+          }),
+          { status: 200 },
+        );
+      }),
+    );
+    renderCard();
+    expect(await screen.findByText("已通过")).toBeInTheDocument();
+    expect(screen.getByText("私人密钥已验证。可以在行程页生成多日草稿。")).toBeInTheDocument();
   });
 });

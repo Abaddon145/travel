@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ const labels: Record<Phase, string> = {
 };
 
 export function OwnerKeySection() {
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState(() => readOwnerKey());
   const [stored, setStored] = useState(() => readOwnerKey());
   const [visible, setVisible] = useState(false);
@@ -29,9 +31,17 @@ export function OwnerKeySection() {
 
   const status = phase === "idle" && stored ? "已保存在这台设备" : labels[phase];
 
+  function publish(storedNow: boolean, check?: string) {
+    queryClient.setQueryData(["owner-key-present"], storedNow);
+    if (check) queryClient.setQueryData(["owner-key-check"], check);
+    if (!storedNow) queryClient.removeQueries({ queryKey: ["owner-key-check"] });
+  }
+
   async function verify() {
     setPhase("checking");
-    setPhase(await checkOwnerKey());
+    const result = await checkOwnerKey();
+    setPhase(result);
+    publish(true, result);
   }
 
   return (
@@ -79,6 +89,7 @@ export function OwnerKeySection() {
             setStored(next);
             setDraft(next);
             setPhase("idle");
+            publish(true);
           }}
         >
           保存
@@ -102,6 +113,7 @@ export function OwnerKeySection() {
             setDraft("");
             setPhase("idle");
             setVisible(false);
+            publish(false);
           }}
         >
           清除

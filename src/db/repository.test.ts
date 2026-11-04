@@ -10,6 +10,7 @@ import {
   createDay,
   createTimelineItem,
   createTrip,
+  saveGeneratedDraft,
   deleteTimelineItem,
   moveTimelineItem,
   readTripDetail,
@@ -191,5 +192,55 @@ describe("行程仓储", () => {
       updatedAt: 1,
     });
     await expect(readTripSummaries(database)).rejects.toBeInstanceOf(DataIntegrityError);
+  });
+
+  it("把 AI 草稿保存成可再次打开的行程", async () => {
+    const database = await openFresh();
+    const id = await saveGeneratedDraft(database, {
+      title: "京都秋日草稿",
+      destination: "京都",
+      startDate: "2026-11-10",
+      endDate: "2026-11-11",
+      summary: "寺与巷",
+      warnings: [],
+      days: [
+        {
+          date: "2026-11-10",
+          title: "东山",
+          note: "",
+          items: [
+            {
+              kind: "place",
+              name: "清水寺",
+              area: "东山",
+              note: "",
+              timeLabel: "09:30",
+              checkIn: "",
+              checkOut: "",
+            },
+          ],
+        },
+        {
+          date: "2026-11-11",
+          title: "离店",
+          note: "",
+          items: [
+            {
+              kind: "lodging",
+              name: "町家",
+              area: "祗园",
+              note: "",
+              timeLabel: "",
+              checkIn: "2026-11-10",
+              checkOut: "2026-11-11",
+            },
+          ],
+        },
+      ],
+    });
+    const detail = await readTripDetail(database, id);
+    expect(detail?.title).toBe("京都秋日草稿");
+    expect(detail?.days).toHaveLength(2);
+    expect(detail?.days[0]?.items.map((item) => item.name)).toEqual(["清水寺"]);
   });
 });

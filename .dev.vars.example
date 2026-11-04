@@ -12,3 +12,6 @@ POLICY_AUD=
 AUTH_MODE=owner-key
 # Hex SHA-256 of the owner key. Placeholder only. Never commit the key or a real hash.
 OWNER_KEY_SHA256=
+# DeepSeek. Placeholder only. Set the real key with: npx wrangler secret put DEEPSEEK_API_KEY
+# Do not put a real key here. Base URL and model already live in wrangler.jsonc.
+DEEPSEEK_API_KEY=

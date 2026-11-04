@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiStatusCard } from "@/components/api-status-card";
 import { OwnerKeySection } from "@/components/owner-key-section";
+import { UsageStats } from "@/components/usage-stats";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -61,6 +62,8 @@ export function ProfilePage() {
         </div>
         <Separator />
         <OwnerKeySection />
+        <Separator />
+        <UsageStats />
         <Separator />
         <ApiStatusCard />
         <Separator />

@@ -1,3 +1,4 @@
+import { draftSchema } from "@shared/ai-schema";
 import type {
   Day,
   Lodging,
@@ -566,6 +567,70 @@ export async function setTimelineLock(
         parseTimelineItem({ ...latest, locked, updatedAt: Date.now() }),
       );
       await touchTrip(db, latest.tripId);
+    }),
+  );
+}
+
+export async function saveGeneratedDraft(db: TravelDatabase, input: unknown) {
+  const parsedResult = draftSchema.safeParse(input);
+  if (!parsedResult.success) throw new ValidationError(parsedResult.error);
+  const parsed = parsedResult.data;
+  return guard(() =>
+    db.transaction("rw", tables(db), async () => {
+      const now = Date.now();
+      const tripInput = parseTripInput({
+        title: parsed.title,
+        destination: parsed.destination,
+        startDate: parsed.startDate,
+        endDate: parsed.endDate,
+        summary: parsed.summary,
+      });
+      const trip = parseTrip({
+        ...tripInput,
+        id: createId(),
+        createdAt: now,
+        updatedAt: now,
+      });
+      await db.trips.add(trip);
+      for (const [dayIndex, day] of parsed.days.entries()) {
+        const dayInput = parseDayInput({
+          date: day.date,
+          title: day.title,
+          note: day.note,
+        });
+        const dayId = createId();
+        await db.days.add(
+          parseDay({
+            ...dayInput,
+            id: dayId,
+            tripId: trip.id,
+            order: dayIndex,
+            createdAt: now,
+            updatedAt: now,
+          }),
+        );
+        for (const [itemIndex, item] of day.items.entries()) {
+          const itemInput = parseItemInput(item);
+          const refId = await insertEntity(db, trip.id, itemInput, now);
+          await db.timelineItems.add(
+            parseTimelineItem({
+              id: createId(),
+              tripId: trip.id,
+              dayId,
+              kind: itemInput.kind,
+              refId,
+              order: itemIndex,
+              locked: false,
+              timeLabel: itemInput.timeLabel,
+              createdAt: now,
+              updatedAt: now,
+            }),
+          );
+        }
+      }
+      const snapshot = await readGraph(db, trip.id);
+      if (snapshot) await writeVersion(db, trip.id, "保存 AI 草稿", snapshot);
+      return trip.id;
     }),
   );
 }

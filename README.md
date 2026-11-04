@@ -45,6 +45,8 @@ npm run dev
 
 付费和管理接口现在用私人密钥。浏览器只把密钥放在这台设备上，Worker 只保存它的 SHA-256（Wrangler secret `OWNER_KEY_SHA256`），明文不要进仓库。Access JWT 仍留着，等账号可以开通 Zero Trust 后再切换。
 
+行程草稿由 Worker 调用 DeepSeek。密钥是 Worker secret `DEEPSEEK_API_KEY`，不要写进仓库。默认模型是 `deepseek-flash`，也可以在页面上改用 `deepseek-v4-pro`。
+
 ## 部署到 GitHub
 
 工作流在 [Abaddon145/travel](https://github.com/Abaddon145/travel) 的 `main` 上运行：先 lint、typecheck、test、build，再用 Wrangler 部署到 `workers.dev` HTTPS。

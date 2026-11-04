@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
+import type { AiUsageEntry } from "@/db/ai-usage";
 import type {
   Day,
   Lodging,
@@ -25,6 +26,7 @@ export class TravelDatabase extends Dexie {
   lodgings!: EntityTable<Lodging, "id">;
   timelineItems!: EntityTable<TimelineItem, "id">;
   versions!: EntityTable<TripVersion, "id">;
+  aiUsage!: EntityTable<AiUsageEntry, "id">;
 
   constructor(name = DB_NAME, options: TravelDatabaseOptions = {}) {
     super(name);
@@ -47,6 +49,10 @@ export class TravelDatabase extends Dexie {
 
     this.version(3).stores({
       itinerary: null,
+    });
+
+    this.version(4).stores({
+      aiUsage: "id, createdAt",
     });
 
     this.on("populate", () => {

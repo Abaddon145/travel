@@ -48,6 +48,15 @@ describe("日志脱敏", () => {
     expect(JSON.stringify(redacted)).toBe('{"note":"[redacted]"}');
   });
 
+  it("去掉 DeepSeek 密钥", () => {
+    const redacted = redactForLog({
+      DEEPSEEK_API_KEY: "sk-live-secret-value",
+      detail: "rejected sk-live-secret-value",
+    });
+    expect(JSON.stringify(redacted)).not.toContain("sk-live");
+    expect(JSON.stringify(redacted)).toContain("[redacted]");
+  });
+
   it("写出前再滤一遍", () => {
     const spy = vi.spyOn(console, "log").mockImplementation(() => undefined);
     createLogger()({ authorization: "secret", path: "/api/status" });

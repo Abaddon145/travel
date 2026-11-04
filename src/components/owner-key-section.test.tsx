@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +15,12 @@ describe("私人密钥设置", () => {
     const user = userEvent.setup();
     const fetchImpl = vi.fn();
     vi.stubGlobal("fetch", fetchImpl);
-    render(<OwnerKeySection />);
+    const client = new QueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <OwnerKeySection />
+      </QueryClientProvider>,
+    );
     expect(screen.getByRole("status")).toHaveTextContent("未设置");
     expect(screen.getByLabelText("私人密钥")).toHaveAttribute("type", "password");
 

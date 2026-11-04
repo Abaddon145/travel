@@ -79,4 +79,48 @@ describe("v1 到 v2 迁移", () => {
     expect(items.every((item) => item.locked === false)).toBe(true);
     expect(upgraded.tables.map((table) => table.name)).not.toContain("itinerary");
   });
+
+  it("版本 4 保留行程并增加用量表", async () => {
+    const name = `v3-${crypto.randomUUID()}`;
+    const legacy = new Dexie(name);
+    legacy.version(3).stores({
+      trips: "id, updatedAt",
+      days: "id, tripId, date, [tripId+date]",
+      places: "id, tripId",
+      lodgings: "id, tripId",
+      timelineItems: "id, tripId, dayId, order, [dayId+order]",
+      versions: "id, tripId, createdAt",
+    });
+    await legacy.open();
+    await legacy.table("trips").add({
+      id: "keep",
+      title: "仍在",
+      destination: "京都",
+      startDate: "2026-11-10",
+      endDate: "2026-11-10",
+      summary: "",
+      createdAt: 1,
+      updatedAt: 1,
+    });
+    legacy.close();
+
+    const upgraded = new TravelDatabase(name, { seed: false });
+    opened.push(upgraded);
+    await upgraded.open();
+    expect((await upgraded.trips.get("keep"))?.title).toBe("仍在");
+    await upgraded.aiUsage.add({
+      id: "u1",
+      createdAt: Date.now(),
+      destination: "京都",
+      model: "deepseek-flash",
+      promptTokens: 1,
+      completionTokens: 1,
+      totalTokens: 2,
+      cacheHitTokens: 0,
+      cacheMissTokens: 1,
+      latencyMs: 1,
+      attempts: 1,
+    });
+    expect(await upgraded.aiUsage.count()).toBe(1);
+  });
 });

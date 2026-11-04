@@ -24,6 +24,12 @@ describe("私人密钥只附在受保护请求上", () => {
     expect(gatedHeaders("/api/auth/check").get("authorization")).toBe(
       "Bearer device-key",
     );
+    expect(gatedHeaders("/api/ai/itinerary").get("authorization")).toBe(
+      "Bearer device-key",
+    );
+    expect(gatedHeaders("/api/ai/usage").get("authorization")).toBe(
+      "Bearer device-key",
+    );
     clearOwnerKey();
     expect(gatedHeaders("/api/paid/draft").has("authorization")).toBe(false);
   });

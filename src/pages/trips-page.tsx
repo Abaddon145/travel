@@ -49,6 +49,9 @@ export function TripsPage() {
         }
       />
       <section className="flex flex-col gap-4 px-4 py-6">
+        <Button variant="outline" className="h-11" asChild>
+          <Link to="/plan">用 AI 起草</Link>
+        </Button>
         {trips === undefined ? (
           <div className="flex flex-col gap-4" aria-busy="true">
             <p className="sr-only">正在读取行程</p>

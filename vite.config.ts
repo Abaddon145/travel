@@ -72,6 +72,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "src"),
+      "@shared": path.resolve(process.cwd(), "shared"),
     },
   },
   server: {

@@ -1,5 +1,7 @@
 const sensitiveKey =
-  /authorization|cookie|email|secret|token|password|api[-_]?key|jwt|assertion|cf-access|owner[-_]?key|x-lvxu-owner-key/i;
+  /authorization|cookie|email|secret|token|password|api[-_]?key|jwt|assertion|cf-access|owner[-_]?key|x-lvxu-owner-key|deepseek/i;
+
+const secretToken = /sk-[A-Za-z0-9_-]+/g;
 
 const emailValue = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const bearerValue = /^bearer\s+\S+/i;
@@ -21,6 +23,10 @@ export function redactForLog(value: unknown, depth = 0): unknown {
         : redactForLog(child, depth + 1);
     }
     return output;
+  }
+  if (typeof value === "string" && secretToken.test(value)) {
+    secretToken.lastIndex = 0;
+    return value.replace(secretToken, "[redacted]");
   }
   if (
     typeof value === "string" &&

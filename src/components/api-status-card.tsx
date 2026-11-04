@@ -4,11 +4,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readApiStatus, type ApiUiState } from "@/lib/api-status";
+import { checkOwnerKey, readOwnerKey } from "@/lib/owner-key";
 
 const copy: Record<ApiUiState["kind"], { title: string; body: string }> = {
   connected: {
     title: "已连接",
-    body: "这台设备可以访问受保护的接口。付费生成仍未接入。",
+    body: "这台设备可以访问受保护的接口，也可以生成行程草稿。",
   },
   unauthorized: {
     title: "未授权",
@@ -30,6 +31,17 @@ const copy: Record<ApiUiState["kind"], { title: string; body: string }> = {
 
 export function ApiStatusCard() {
   const reduce = useReducedMotion();
+  const present = useQuery({
+    queryKey: ["owner-key-present"],
+    queryFn: () => readOwnerKey().length > 0,
+    initialData: () => readOwnerKey().length > 0,
+  });
+  const verified = useQuery({
+    queryKey: ["owner-key-check"],
+    queryFn: () => checkOwnerKey(),
+    enabled: present.data,
+    retry: false,
+  });
   const status = useQuery({
     queryKey: ["api-status"],
     queryFn: () => readApiStatus(),
@@ -48,6 +60,7 @@ export function ApiStatusCard() {
       ) : (
         <StatusBody
           state={status.data ?? { kind: "error" }}
+          verified={verified.data}
           reduce={Boolean(reduce)}
           onRetry={() => void status.refetch()}
         />
@@ -56,7 +69,13 @@ export function ApiStatusCard() {
   );
 }
 
-function describe(state: ApiUiState) {
+function describe(state: ApiUiState, verified?: string) {
+  if (verified === "ok") {
+    return {
+      title: "已通过",
+      body: "私人密钥已验证。可以在行程页生成多日草稿。",
+    };
+  }
   if (state.authMode === "owner-key" && state.kind === "unconfigured") {
     return {
       title: "尚未配置私人密钥",
@@ -81,14 +100,16 @@ function describe(state: ApiUiState) {
 
 function StatusBody({
   state,
+  verified,
   reduce,
   onRetry,
 }: {
   state: ApiUiState;
+  verified?: string;
   reduce: boolean;
   onRetry: () => void;
 }) {
-  const text = describe(state);
+  const text = describe(state, verified);
   const destructive = state.kind === "error" || state.kind === "unauthorized";
   return (
     <motion.div
