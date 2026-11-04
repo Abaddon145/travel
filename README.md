@@ -2,7 +2,7 @@
 
 个人使用的行程规划应用（`lvxu-ai-travel`）。把每一天的景点与住宿排成一条清晰的时间线，数据保存在这台设备上。
 
-这一阶段包含设计系统与工程骨架：Vite、React、TypeScript（strict）、Tailwind CSS v4、shadcn/ui、Motion、Zustand、TanStack Query。
+阶段进度见 [ROADMAP.md](./ROADMAP.md)。当前可以浏览示例行程；编辑还不会被保存。
 
 ## 本地运行
 
