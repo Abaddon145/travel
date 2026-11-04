@@ -15,6 +15,9 @@ coverage
 playwright-report
 test-results
 *.local
+.dev.vars
+.wrangler
+worker/worker-configuration.d.ts
 
 # Editor directories and files
 .vscode/*

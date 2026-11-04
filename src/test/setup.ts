@@ -1,7 +1,10 @@
 import "fake-indexeddb/auto";
-import "@testing-library/jest-dom/vitest";
 
-if (!("storage" in navigator)) {
+if (typeof document !== "undefined") {
+  await import("@testing-library/jest-dom/vitest");
+}
+
+if (typeof navigator !== "undefined" && !("storage" in navigator)) {
   Object.defineProperty(navigator, "storage", {
     configurable: true,
     value: {
@@ -11,6 +14,7 @@ if (!("storage" in navigator)) {
   });
 }
 
+if (typeof window !== "undefined") {
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({
@@ -24,3 +28,4 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: () => false,
   }),
 });
+}

@@ -19,19 +19,19 @@
 
 ## 路由
 
-| 路径 | 谁先处理 | 鉴权 | 作用 |
-| --- | --- | --- | --- |
-| 页面与静态文件 | 静态资源；找不到则回 `index.html` | 不要求登录，生产 HTTPS 可直接打开 | 现有 PWA |
-| `GET /api/status` | Worker | 不强制登录，但限流 | 给「我的」页：已连接 / 未授权 / 未配置 / 限流 / 错误。响应里不出现邮箱 |
-| `POST /api/paid/draft` | Worker | Access JWT，且邮箱必须在允许名单 | 以后才会调用付费上游的门。本阶段鉴权通过后只返回「尚未配置」，不发起外部请求 |
-| `GET /api/admin/health` | Worker | 同上 | 管理用健康检查，不返回密钥 |
+| 路径                    | 谁先处理                          | 鉴权                              | 作用                                                                         |
+| ----------------------- | --------------------------------- | --------------------------------- | ---------------------------------------------------------------------------- |
+| 页面与静态文件          | 静态资源；找不到则回 `index.html` | 不要求登录，生产 HTTPS 可直接打开 | 现有 PWA                                                                     |
+| `GET /api/status`       | Worker                            | 不强制登录，但限流                | 给「我的」页：已连接 / 未授权 / 未配置 / 限流 / 错误。响应里不出现邮箱       |
+| `POST /api/paid/draft`  | Worker                            | Access JWT，且邮箱必须在允许名单  | 以后才会调用付费上游的门。本阶段鉴权通过后只返回「尚未配置」，不发起外部请求 |
+| `GET /api/admin/health` | Worker                            | 同上                              | 管理用健康检查，不返回密钥                                                   |
 
 未带有效 JWT 的调用在进入付费处理函数之前就被拒绝。
 
 ## 鉴权与本地绕过
 
 - 生产读取 `Cf-Access-Jwt-Assertion`，用 `TEAM_DOMAIN` 的 `/cdn-cgi/access/certs` 和 `POLICY_AUD` 校验签发者与受众，再比对 `ACCESS_ALLOWED_EMAIL`。比对失败或配置为空都拒绝。
-- `ACCESS_ALLOWED_EMAIL` 只放在 Worker 配置里，不进前端包，不写进界面，不写进日志。
+- `ACCESS_ALLOWED_EMAIL` 是 Wrangler secret（本地写在不提交的 `.dev.vars`），不进前端包，不写进界面，不写进日志。
 - 本地绕过：仅当 `ENVIRONMENT` 不是 `production` 且 `.dev.vars` 里 `ACCESS_DEV_BYPASS=1`。`wrangler.jsonc` 把生产设为 `production`，因此部署后绕过关闭。`.dev.vars` 不提交；只提交 `.dev.vars.example` 占位。
 
 ## 限流与日志

@@ -1,0 +1,9 @@
+# Copy to .dev.vars for `wrangler dev` only. Do not put real API keys here.
+# Production ignores ACCESS_DEV_BYPASS because ENVIRONMENT is production in wrangler.jsonc.
+ENVIRONMENT=development
+ACCESS_DEV_BYPASS=1
+# Allowlist address for the single personal user. Not a paid-upstream key.
+ACCESS_ALLOWED_EMAIL=
+# Leave empty until the Access application exists. Empty values fail closed.
+TEAM_DOMAIN=
+POLICY_AUD=

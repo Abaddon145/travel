@@ -46,6 +46,7 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest}"],
         clientsClaim: true,
         skipWaiting: true,
@@ -65,6 +66,12 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 43127,
     strictPort: true,
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:8787",
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     host: "127.0.0.1",

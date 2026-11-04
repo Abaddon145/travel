@@ -14,6 +14,7 @@ export default tseslint.config(
       "coverage",
       "playwright-report",
       "test-results",
+      "worker/worker-configuration.d.ts",
     ],
   },
   js.configs.recommended,

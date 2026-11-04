@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiStatusCard } from "@/components/api-status-card";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -58,6 +59,8 @@ export function ProfilePage() {
           </Button>
         </div>
         <Separator />
+        <ApiStatusCard />
+        <Separator />
         <div className="flex flex-col gap-4">
           <h2 className="text-sm font-medium">外观</h2>
           <div className="flex flex-wrap gap-2" role="group" aria-label="外观">
@@ -79,7 +82,8 @@ export function ProfilePage() {
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-medium">关于</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            旅序 AI Travel。本地行程已经可以编辑。云端、生成和地图还没有接入。
+            旅序 AI
+            Travel。行程仍在这台设备上。云端目前只提供同一源站的接口门禁，生成和地图还没有接入。
           </p>
         </div>
       </section>

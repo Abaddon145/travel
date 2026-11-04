@@ -28,6 +28,30 @@ npm run preview
 
 `test:e2e` 会先构建，再用 HTTPS 预览跑 Playwright。第一次需要 `npx playwright install chromium`。
 
+## 同一源站的接口
+
+静态页面和 `/api/*` 由同一个 Worker 提供。本地先开接口，再开页面：
+
+```bash
+npm run dev:api
+npm run dev
+```
+
+`dev:api` 是 `wrangler dev`，地址 `http://127.0.0.1:8787`。Vite 把 `/api` 代理过去，浏览器仍访问 `https://127.0.0.1:43127`。
+
+把 `.dev.vars.example` 复制为 `.dev.vars`。这个文件已忽略，不要提交。生产环境的 `ENVIRONMENT` 是 `production`，因此 `ACCESS_DEV_BYPASS` 不会生效。允许名单邮箱只放在 Wrangler secret `ACCESS_ALLOWED_EMAIL` 里，不要写进前端。
+
+## 部署到 GitHub
+
+工作流在 [Abaddon145/travel](https://github.com/Abaddon145/travel) 的 `main` 上运行：先 lint、typecheck、test、build，再用 Wrangler 部署到 `workers.dev` HTTPS。
+
+仓库密钥只在 GitHub 里配置，不要写进代码：
+
+- `CLOUDFLARE_API_TOKEN`：能编辑 Workers 脚本的账号令牌
+- `CLOUDFLARE_ACCOUNT_ID`：目标 Cloudflare 账号
+
+Access 应用配好后，再设置 Worker 变量 `TEAM_DOMAIN` 和 `POLICY_AUD`，并用 `npx wrangler secret put ACCESS_ALLOWED_EMAIL` 写入允许名单。不要把这些值放进 GitHub 密钥以外的提交。
+
 `preview` 默认端口是 `43128`。
 
 ## 说明

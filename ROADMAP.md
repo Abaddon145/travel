@@ -22,9 +22,9 @@
 
 已完成。Dexie / IndexedDB 保存行程、日期、景点、住宿、时间线顺序和版本历史。可以新增、编辑、删除、排序和锁定，刷新后仍在。写入和读出都经过校验。
 
-## 06 Cloudflare Worker API + Access
+## 06 Cloudflare 部署与 API 安全
 
-未开始。把个人接口放到 Cloudflare Workers，并用 Cloudflare Access 挡住别人。浏览器仍然不存放密钥。这一步只做你自己的门，不做多用户账号。
+已完成。静态页面和 `/api/*` 在同一个 Worker 源站。付费路径校验 Access JWT，并按身份或 IP 限流。日志会去掉授权、cookie、邮箱和密钥。GitHub Actions 部署配置指向私有仓库。生成和地图仍未接入。
 
 ## 07 DeepSeek 行程生成
 
