@@ -3,9 +3,9 @@
 本计划对照已经完成的 01–04 代码，以及 Dexie 官方文档：
 
 - 版本与 `upgrade`、`populate`、事务：[Design](https://dexie.org/docs/Tutorial/Design)
-- [Version.upgrade()](https://dexie.org/docs/Version/Version.upgrade())
-- [Dexie.transaction()](https://dexie.org/docs/Dexie/Dexie.transaction())
-- [useLiveQuery()](https://dexie.org/docs/dexie-react-hooks/useLiveQuery())
+- [Version.upgrade()](<https://dexie.org/docs/Version/Version.upgrade()>)
+- [Dexie.transaction()](<https://dexie.org/docs/Dexie/Dexie.transaction()>)
+- [useLiveQuery()](<https://dexie.org/docs/dexie-react-hooks/useLiveQuery()>)
 
 Dexie 3+ 会按已安装的库和下一版声明做差量升级；带 `upgrade()` 的版本一旦发布就不能再改。全新安装直接落到最终结构，不跑 `upgrade()`，只跑 `populate`（只在第一次创建库时）。事务回调里只用 Dexie / 全局 Promise，避免中途 `await` 无关的异步 API，否则 IndexedDB 会提前提交。`useLiveQuery` 只观察通过 Dexie 发生的变更；加载中返回 `undefined`，空数组表示真的没有数据。查询里抛出的错误用错误边界接住。
 
@@ -21,11 +21,11 @@ Dexie 3+ 会按已安装的库和下一版声明做差量升级；带 `upgrade()
 
 库名 `lvxu-travel`。主键都是调用方生成的字符串，方便快照来回写。
 
-| 版本 | 对象库 | 作用 |
-| --- | --- | --- |
-| v1 | `trips: id, updatedAt`；`itinerary: id, tripId, dayDate, order` | 旧的扁平行程。行程用 `name`，一天里的景点和住宿挤在 `itinerary` |
-| v2 | 增加 `days`、`places`、`lodgings`、`timelineItems`、`versions` | `upgrade()` 把 `name` 改成 `title`，按 `tripId + dayDate` 拆出天，再拆出景点、住宿和时间线条目，`locked` 缺省为 false |
-| v3 | `itinerary: null` | 拆完再删旧表。升级函数放在 v2，避免删表和读旧表撞在同一版本 |
+| 版本 | 对象库                                                          | 作用                                                                                                                  |
+| ---- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| v1   | `trips: id, updatedAt`；`itinerary: id, tripId, dayDate, order` | 旧的扁平行程。行程用 `name`，一天里的景点和住宿挤在 `itinerary`                                                       |
+| v2   | 增加 `days`、`places`、`lodgings`、`timelineItems`、`versions`  | `upgrade()` 把 `name` 改成 `title`，按 `tripId + dayDate` 拆出天，再拆出景点、住宿和时间线条目，`locked` 缺省为 false |
+| v3   | `itinerary: null`                                               | 拆完再删旧表。升级函数放在 v2，避免删表和读旧表撞在同一版本                                                           |
 
 最终索引：
 

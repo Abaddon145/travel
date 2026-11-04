@@ -94,3 +94,19 @@ export type TripSummary = {
 export type TripDetail = TripSummary & {
   days: DayView[];
 };
+
+export type TripSnapshot = {
+  trip: Trip;
+  days: Day[];
+  places: Place[];
+  lodgings: Lodging[];
+  timelineItems: TimelineItem[];
+};
+
+export type TripVersion = {
+  id: string;
+  tripId: string;
+  label: string;
+  createdAt: number;
+  snapshot: TripSnapshot;
+};

@@ -2,7 +2,7 @@
 
 个人使用的行程规划应用（`lvxu-ai-travel`）。把每一天的景点与住宿排成一条清晰的时间线，数据保存在这台设备上。
 
-阶段进度见 [ROADMAP.md](./ROADMAP.md)。当前可以浏览示例行程；编辑还不会被保存。
+阶段进度见 [ROADMAP.md](./ROADMAP.md)。行程保存在本机 IndexedDB 里，刷新后还在。示例数据只在第一次建立数据库时写入。
 
 ## 本地运行
 
@@ -21,9 +21,12 @@ npm run dev
 npm run lint
 npm run typecheck
 npm run test
+npm run test:e2e
 npm run build
 npm run preview
 ```
+
+`test:e2e` 会先构建，再用 HTTPS 预览跑 Playwright。第一次需要 `npx playwright install chromium`。
 
 `preview` 默认端口是 `43128`。
 

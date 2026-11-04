@@ -22,7 +22,7 @@ describe("应用外壳", () => {
     const user = userEvent.setup();
     renderAt("/");
 
-    expect(screen.getByRole("heading", { name: "行程" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "行程" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "探索" }));
     expect(await screen.findByRole("heading", { name: "探索" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "我的" }));

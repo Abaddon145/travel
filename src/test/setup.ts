@@ -1,4 +1,15 @@
+import "fake-indexeddb/auto";
 import "@testing-library/jest-dom/vitest";
+
+if (!("storage" in navigator)) {
+  Object.defineProperty(navigator, "storage", {
+    configurable: true,
+    value: {
+      persist: async () => true,
+      persisted: async () => false,
+    },
+  });
+}
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
