@@ -76,7 +76,7 @@ DeepSeek 每天最多 30 次请求、10 万令牌，记在 Worker 的 Durable Ob
 
 - 真机冷启动、打印面板和主屏幕安装要按 `docs/stage12/DEVICE_CHECKLIST.md` 人工确认。Playwright 的断网不会让一次新的文档导航走服务工作线程。
 - 助手对话只留在当前页面的内存里。关闭面板再打开还在；刷新或离开行程就没了。已经应用的修改在版本记录里，可以恢复。这是阶段 09 留下的行为，本版不改存储。
-- 内容安全策略允许 `https://webapi.amap.com` 和 `'unsafe-eval'`，因为高德 JS API 2.0 会动态加载并使用 eval。没有放开任意脚本源。未使用 `Cross-Origin-Embedder-Policy: require-corp`，否则瓦片会被挡住。
+- 内容安全策略的 `script-src` 允许 `'self'`、`https://webapi.amap.com`、`https://*.amap.com` 和 `'unsafe-eval'`，不含 `'unsafe-inline'`。高德 JS API 2.0 会动态加载二级脚本并使用 eval。字体、图片和连接另允许高德与 AutoNavi 的资源域名。没有放开任意脚本源。未使用 `Cross-Origin-Embedder-Policy: require-corp`，否则瓦片会被挡住。
 - `GET /api/status` 不要求密钥，只返回门禁模式、是否已配置和 `paidApi: "locked"`。它不调用 DeepSeek 或高德，也不返回密钥、指纹或邮箱。
 - 地点检索仍使用 Worker 边缘缓存。浏览器服务工作线程不存这些响应。
 - 单人、单设备数据。没有账号，也没有云端同步。

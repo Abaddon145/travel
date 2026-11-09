@@ -9,5 +9,9 @@ describe("静态资源安全头", () => {
     for (const value of Object.values(securityHeaders)) {
       expect(file).toContain(value);
     }
+    const policy = securityHeaders["content-security-policy"] ?? "";
+    const scriptSrc = policy.split("; ").find((part) => part.startsWith("script-src ")) ?? "";
+    expect(scriptSrc).toContain("https://*.amap.com");
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
   });
 });
