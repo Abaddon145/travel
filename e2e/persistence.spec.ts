@@ -27,12 +27,12 @@ test("创建的行程在刷新后仍在，锁定、排序和恢复版本可用",
   await page.getByRole("radio", { name: "住宿" }).click();
   await page.getByLabel("名称").fill("白川庵");
   await page.getByRole("button", { name: "保存" }).click();
-  await expect(page.getByText("白川庵")).toBeVisible();
+  await expect(page.getByTestId("timeline-name").filter({ hasText: "白川庵" })).toBeVisible();
 
   await page.reload();
   await expect(page.getByRole("heading", { name: "京都测试" })).toBeVisible();
-  await expect(page.getByText("清水寺")).toBeVisible();
-  await expect(page.getByText("白川庵")).toBeVisible();
+  await expect(page.getByTestId("timeline-name").filter({ hasText: "清水寺" })).toBeVisible();
+  await expect(page.getByTestId("timeline-name").filter({ hasText: "白川庵" })).toBeVisible();
 
   await page.getByRole("button", { name: "在第一天添加项目" }).click();
   await page.getByLabel("名称").fill("二年坂");

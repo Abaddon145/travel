@@ -12,7 +12,7 @@ export function TabBar() {
   return (
     <nav
       aria-label="主导航"
-      className="border-t bg-background/90 pb-safe backdrop-blur-md"
+      className="no-print border-t bg-background/90 pb-safe backdrop-blur-md"
     >
       <div className="mx-auto grid max-w-lg grid-cols-3">
         {tabs.map((tab) => {

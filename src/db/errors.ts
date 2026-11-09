@@ -56,6 +56,13 @@ export class NotFoundError extends Error {
   }
 }
 
+export class BackupError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackupError";
+  }
+}
+
 export function isQuotaError(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
   if ("name" in error && error.name === "QuotaExceededError") return true;
@@ -73,6 +80,7 @@ export function toUserMessage(error: unknown): string {
   if (error instanceof LockedItemError) return error.message;
   if (error instanceof ConflictError) return error.message;
   if (error instanceof NotFoundError) return error.message;
+  if (error instanceof BackupError) return error.message;
   if (isQuotaError(error)) return new StorageQuotaError().message;
   return "没有完成这次操作，请再试一次。";
 }

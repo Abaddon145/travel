@@ -6,6 +6,7 @@ const sections = [
   { to: (tripId: string) => `/trips/${tripId}/budget`, label: "预算", end: false },
   { to: (tripId: string) => `/trips/${tripId}/bookings`, label: "预订", end: false },
   { to: (tripId: string) => `/trips/${tripId}/kit`, label: "清单", end: false },
+  { to: (tripId: string) => `/trips/${tripId}/guide`, label: "攻略", end: false },
 ] as const;
 
 export function TripSectionNav({ tripId }: { tripId: string }) {

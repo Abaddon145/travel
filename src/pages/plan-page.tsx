@@ -33,6 +33,13 @@ export function PlanPage() {
   const [title, setTitle] = useState("");
 
   async function generate(retrying: boolean) {
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setPhase({
+        kind: "network",
+        message: "生成行程需要网络。已保存在这台设备上的行程仍可查看。",
+      });
+      return;
+    }
     const parsed = preferenceSchema.safeParse({
       ...form,
       travelers: Number(form.travelers),

@@ -11,12 +11,20 @@ export default defineConfig({
     tailwindcss(),
     basicSsl(),
     VitePWA({
-      registerType: "autoUpdate",
-      includeAssets: ["favicon.svg", "apple-touch-icon.png"],
+      // Prompt keeps the new worker waiting until the user refreshes.
+      registerType: "prompt",
+      injectRegister: false,
+      includeAssets: [
+        "favicon.svg",
+        "apple-touch-icon.png",
+        "apple-touch-icon-167.png",
+        "apple-touch-icon-152.png",
+      ],
       manifest: {
+        id: "/",
         name: "旅序 AI Travel",
         short_name: "旅序",
-        description: "个人行程本。把景点与住宿按天排好。",
+        description: "个人行程本。离线仍可查看已保存的行程。",
         lang: "zh-CN",
         dir: "ltr",
         display: "standalone",
@@ -25,16 +33,19 @@ export default defineConfig({
         scope: "/",
         background_color: "#f6f3ec",
         theme_color: "#f6f3ec",
+        categories: ["travel"],
         icons: [
           {
             src: "pwa-192.png",
             sizes: "192x192",
             type: "image/png",
+            purpose: "any",
           },
           {
             src: "pwa-512.png",
             sizes: "512x512",
             type: "image/png",
+            purpose: "any",
           },
           {
             src: "pwa-512-maskable.png",
@@ -48,31 +59,23 @@ export default defineConfig({
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//, /^\/_AMapService\//],
         globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest}"],
+        globIgnores: ["**/node_modules/**/*", "sw.js", "workbox-*.js", "**/splash/**"],
         clientsClaim: true,
-        skipWaiting: true,
         cleanupOutdatedCaches: true,
-        runtimeCaching: [
+        runtimeCaching: (
+          ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"] as const
+        ).flatMap((method) => [
           {
             urlPattern: /\/api\//,
-            handler: "NetworkOnly",
-            method: "GET",
-          },
-          {
-            urlPattern: /\/api\//,
-            handler: "NetworkOnly",
-            method: "POST",
+            handler: "NetworkOnly" as const,
+            method,
           },
           {
             urlPattern: /\/_AMapService\//,
-            handler: "NetworkOnly",
-            method: "GET",
+            handler: "NetworkOnly" as const,
+            method,
           },
-          {
-            urlPattern: /\/_AMapService\//,
-            handler: "NetworkOnly",
-            method: "POST",
-          },
-        ],
+        ]),
       },
       devOptions: {
         enabled: true,

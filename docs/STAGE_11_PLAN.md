@@ -32,7 +32,7 @@
 
 ## 服务工作线程
 
-- `registerType` 改为 `prompt`。去掉 `skipWaiting` 与 `clientsClaim`。
+- `registerType` 改为 `prompt`。不设置 `skipWaiting`，新版本停在 waiting。`clientsClaim` 打开，这样第一次安装后当前页会被接管，离线再进时外壳已经受控；更新仍要等用户点刷新。
 - `injectRegister: false`。只在 `src/pwa/register.ts` 里注册一次，避免插件再注入一份。
 - 预缓存仍是构建产物：`js/css/html/svg/png/ico/webmanifest`。启动图体积大，用 `globIgnores` 排除，不放进预缓存。
 - 运行时对 `/api/` 与 `/_AMapService/` 的 GET/POST/PUT/PATCH/DELETE/HEAD 全部 `NetworkOnly`。
