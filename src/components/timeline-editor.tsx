@@ -18,6 +18,9 @@ import {
 import type { DayView, TimelineEntry, TripDetail } from "@/domain/types";
 import { notifyError, notifySuccess, notifyUndo } from "@/lib/feedback";
 
+const timeFieldClass =
+  "h-11 rounded-lg border bg-background px-2 text-base text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+
 type ConfirmState =
   { kind: "day"; day: DayView } | { kind: "item"; item: TimelineEntry } | null;
 
@@ -85,7 +88,7 @@ export function TimelineEditor({
             setDayOpen(true);
           }}
         >
-          <Plus data-icon="inline-start" />
+          <Plus aria-hidden="true" data-icon="inline-start" />
           添加一天
         </Button>
       </div>
@@ -103,7 +106,7 @@ export function TimelineEditor({
                 锁定自
                 <input
                   type="time"
-                  className="h-11 rounded-lg border bg-background px-2 text-sm text-foreground"
+                  className={timeFieldClass}
                   value={day.lockedFrom ?? ""}
                   aria-label={`${day.title}锁定开始`}
                   onChange={(event) =>
@@ -118,7 +121,7 @@ export function TimelineEditor({
                 锁定至
                 <input
                   type="time"
-                  className="h-11 rounded-lg border bg-background px-2 text-sm text-foreground"
+                  className={timeFieldClass}
                   value={day.lockedTo ?? ""}
                   aria-label={`${day.title}锁定结束`}
                   onChange={(event) =>
@@ -143,7 +146,11 @@ export function TimelineEditor({
                   aria-label={day.locked ? `解锁${day.title}` : `锁定${day.title}`}
                   onClick={() => void setDayLock(db, day.id, day.locked !== true)}
                 >
-                  {day.locked ? <Lock /> : <LockOpen />}
+                  {day.locked ? (
+                    <Lock aria-hidden="true" />
+                  ) : (
+                    <LockOpen aria-hidden="true" />
+                  )}
                 </Button>
                 <Button
                   type="button"
@@ -155,7 +162,7 @@ export function TimelineEditor({
                     setDayOpen(true);
                   }}
                 >
-                  <Pencil />
+                  <Pencil aria-hidden="true" />
                 </Button>
                 <Button
                   type="button"
@@ -165,7 +172,7 @@ export function TimelineEditor({
                   disabled={blocked}
                   onClick={() => setConfirm({ kind: "day", day })}
                 >
-                  <Trash2 />
+                  <Trash2 aria-hidden="true" />
                 </Button>
                 <Button
                   type="button"
@@ -177,7 +184,7 @@ export function TimelineEditor({
                     setItemDayId(day.id);
                   }}
                 >
-                  <Plus />
+                  <Plus aria-hidden="true" />
                 </Button>
               </>
             );
@@ -201,7 +208,7 @@ export function TimelineEditor({
                   disabled={upDisabled || move.isPending}
                   onClick={() => move.mutate({ id: item.id, direction: "up" })}
                 >
-                  <ArrowUp />
+                  <ArrowUp aria-hidden="true" />
                 </Button>
                 <Button
                   type="button"
@@ -211,7 +218,7 @@ export function TimelineEditor({
                   disabled={downDisabled || move.isPending}
                   onClick={() => move.mutate({ id: item.id, direction: "down" })}
                 >
-                  <ArrowDown />
+                  <ArrowDown aria-hidden="true" />
                 </Button>
                 <Button
                   type="button"
@@ -221,7 +228,11 @@ export function TimelineEditor({
                   aria-label={item.locked ? `解锁${item.name}` : `锁定${item.name}`}
                   onClick={() => lock.mutate({ id: item.id, locked: !item.locked })}
                 >
-                  {item.locked ? <Lock /> : <LockOpen />}
+                  {item.locked ? (
+                    <Lock aria-hidden="true" />
+                  ) : (
+                    <LockOpen aria-hidden="true" />
+                  )}
                 </Button>
                 <Button
                   type="button"
@@ -235,7 +246,7 @@ export function TimelineEditor({
                     setItemDayId(day.id);
                   }}
                 >
-                  <Pencil />
+                  <Pencil aria-hidden="true" />
                 </Button>
                 <Button
                   type="button"
@@ -245,7 +256,7 @@ export function TimelineEditor({
                   disabled={item.locked}
                   onClick={() => setConfirm({ kind: "item", item })}
                 >
-                  <Trash2 />
+                  <Trash2 aria-hidden="true" />
                 </Button>
               </div>
             );

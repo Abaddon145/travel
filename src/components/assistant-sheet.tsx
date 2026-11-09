@@ -30,19 +30,28 @@ type Turn = { role: "user" | "assistant"; text: string };
 type PreviewItem = { id: string; name: string; order: number; timeLabel: string };
 
 function itemName(detail: TripDetail, itemId: string) {
-  return detail.days.flatMap((day) => day.items).find((item) => item.id === itemId)?.name ?? "项目";
+  return (
+    detail.days.flatMap((day) => day.items).find((item) => item.id === itemId)?.name ??
+    "项目"
+  );
 }
 
 function dayIdFor(detail: TripDetail, op: PatchOp) {
   if (op.op === "add" || op.op === "move") return op.dayId;
-  return detail.days.find((day) => day.items.some((item) => item.id === op.itemId))?.id ?? "";
+  return (
+    detail.days.find((day) => day.items.some((item) => item.id === op.itemId))?.id ?? ""
+  );
 }
 
 function describeOp(detail: TripDetail, op: PatchOp) {
   if (op.op === "add") return `增加 ${op.name}`;
   if (op.op === "remove") return `删除 ${itemName(detail, op.itemId)}`;
   if (op.op === "move") return `移动 ${itemName(detail, op.itemId)}`;
-  const changes = [op.timeLabel ? `时间 ${op.timeLabel}` : "", op.note ? op.note : "", op.name ? op.name : ""]
+  const changes = [
+    op.timeLabel ? `时间 ${op.timeLabel}` : "",
+    op.note ? op.note : "",
+    op.name ? op.name : "",
+  ]
     .filter(Boolean)
     .join("，");
   return `修改 ${itemName(detail, op.itemId)}${changes ? `：${changes}` : ""}`;
@@ -51,23 +60,26 @@ function describeOp(detail: TripDetail, op: PatchOp) {
 function previewDays(detail: TripDetail, ops: PatchOp[]) {
   const days = detail.days.map((day) => ({
     id: day.id,
-    items: day.items.map(
-      (item): PreviewItem => ({
-        id: item.id,
-        name: item.name,
-        order: item.order,
-        timeLabel: item.timeLabel,
-      }),
-    ),
+    items: day.items.map((item): PreviewItem => ({
+      id: item.id,
+      name: item.name,
+      order: item.order,
+      timeLabel: item.timeLabel,
+    })),
   }));
   for (const op of ops) {
     if (op.op === "remove") {
-      for (const day of days) day.items = day.items.filter((item) => item.id !== op.itemId);
+      for (const day of days)
+        day.items = day.items.filter((item) => item.id !== op.itemId);
     } else if (op.op === "update") {
       for (const day of days) {
         day.items = day.items.map((item) =>
           item.id === op.itemId
-            ? { ...item, timeLabel: op.timeLabel ?? item.timeLabel, name: op.name ?? item.name }
+            ? {
+                ...item,
+                timeLabel: op.timeLabel ?? item.timeLabel,
+                name: op.name ?? item.name,
+              }
             : item,
         );
       }
@@ -78,12 +90,14 @@ function previewDays(detail: TripDetail, ops: PatchOp[]) {
       source.items = source.items.filter((entry) => entry.id !== op.itemId);
       days.find((day) => day.id === op.dayId)?.items.push({ ...item, order: op.order });
     } else {
-      days.find((day) => day.id === op.dayId)?.items.push({
-        id: `new-${op.name}`,
-        name: op.name,
-        order: op.order,
-        timeLabel: op.timeLabel,
-      });
+      days
+        .find((day) => day.id === op.dayId)
+        ?.items.push({
+          id: `new-${op.name}`,
+          name: op.name,
+          order: op.order,
+          timeLabel: op.timeLabel,
+        });
     }
   }
   return days;
@@ -106,7 +120,9 @@ export function AssistantSheet({
   const [dayId, setDayId] = useState(detail.days[0]?.id ?? "");
   const [instruction, setInstruction] = useState("");
   const [history, setHistory] = useState<Turn[]>([]);
-  const [phase, setPhase] = useState<"idle" | "loading" | "error" | "preview" | "applied">("idle");
+  const [phase, setPhase] = useState<
+    "idle" | "loading" | "error" | "preview" | "applied"
+  >("idle");
   const [status, setStatus] = useState("");
   const [ops, setOps] = useState<PatchOp[]>([]);
   const [rejected, setRejected] = useState<PatchOp[]>([]);
@@ -114,10 +130,12 @@ export function AssistantSheet({
   const [undoId, setUndoId] = useState<string | null>(null);
   const [redoId, setRedoId] = useState<string | null>(null);
 
-  const activeDay = detail.days.some((day) => day.id === dayId) ? dayId : (detail.days[0]?.id ?? "");
+  const activeDay = detail.days.some((day) => day.id === dayId)
+    ? dayId
+    : (detail.days[0]?.id ?? "");
   const chosen = ops.filter((_, index) => checked[index]);
-  const conflicts = findScheduleConflicts(previewDays(detail, chosen), routes).filter((conflict) =>
-    chosen.some((op) => dayIdFor(detail, op) === conflict.dayId),
+  const conflicts = findScheduleConflicts(previewDays(detail, chosen), routes).filter(
+    (conflict) => chosen.some((op) => dayIdFor(detail, op) === conflict.dayId),
   );
 
   async function send(text: string) {
@@ -159,13 +177,17 @@ export function AssistantSheet({
         })),
       },
     });
-    setHistory((current) => [...current, { role: "user" as const, text: instructionText }].slice(-8));
+    setHistory((current) =>
+      [...current, { role: "user" as const, text: instructionText }].slice(-8),
+    );
     if (!result.ok) {
       setPhase("error");
       setStatus(result.message);
       return;
     }
-    setHistory((current) => [...current, { role: "assistant" as const, text: result.message }].slice(-8));
+    setHistory((current) =>
+      [...current, { role: "assistant" as const, text: result.message }].slice(-8),
+    );
     setOps(result.ops);
     setRejected(result.rejected);
     setChecked(result.ops.map(() => true));
@@ -220,7 +242,7 @@ export function AssistantSheet({
           <label className="flex flex-col gap-1 text-sm">
             范围
             <select
-              className="h-11 rounded-lg border bg-background px-3"
+              className="h-11 min-h-11 rounded-lg border bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               value={activeDay}
               onChange={(event) => setDayId(event.target.value)}
             >
@@ -259,7 +281,9 @@ export function AssistantSheet({
           ) : null}
           {status ? <p className="text-sm text-pretty">{status}</p> : null}
           {phase === "idle" && history.length === 0 ? (
-            <p className="text-sm text-muted-foreground">还没有对话。选一条快捷指令，或自己写一句。</p>
+            <p className="text-sm text-muted-foreground">
+              还没有对话。选一条快捷指令，或自己写一句。
+            </p>
           ) : null}
           {rejected.length > 0 ? (
             <p className="text-sm text-muted-foreground">已忽略碰到锁定内容的修改。</p>
@@ -267,21 +291,27 @@ export function AssistantSheet({
           {phase === "preview" ? (
             <ul className="flex flex-col gap-2">
               {ops.map((op, index) => (
-                <li key={`${op.op}-${index}`} className="flex min-h-11 items-center gap-2 rounded-lg bg-muted/50 px-3">
-                  <input
-                    type="checkbox"
-                    className="size-4"
-                    checked={checked[index] === true}
-                    aria-label={describeOp(detail, op)}
-                    onChange={(event) =>
-                      setChecked((current) =>
-                        current.map((value, item) => (item === index ? event.target.checked : value)),
-                      )
-                    }
-                  />
-                  <span className="text-sm">
-                    {detail.days.find((day) => day.id === dayIdFor(detail, op))?.title ?? ""} · {describeOp(detail, op)}
-                  </span>
+                <li key={`${op.op}-${index}`}>
+                  <label className="flex min-h-11 items-center gap-3 rounded-lg bg-muted/50 px-3">
+                    <input
+                      type="checkbox"
+                      className="size-11 shrink-0 accent-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      checked={checked[index] === true}
+                      aria-label={describeOp(detail, op)}
+                      onChange={(event) =>
+                        setChecked((current) =>
+                          current.map((value, item) =>
+                            item === index ? event.target.checked : value,
+                          ),
+                        )
+                      }
+                    />
+                    <span className="text-sm">
+                      {detail.days.find((day) => day.id === dayIdFor(detail, op))
+                        ?.title ?? ""}{" "}
+                      · {describeOp(detail, op)}
+                    </span>
+                  </label>
                 </li>
               ))}
             </ul>
@@ -291,7 +321,11 @@ export function AssistantSheet({
               {conflicts.map((conflict) => (
                 <li
                   key={`${conflict.fromId}:${conflict.toId}:${conflict.kind}`}
-                  className={conflict.kind === "unverified" ? "text-sm text-muted-foreground" : "text-sm text-primary"}
+                  className={
+                    conflict.kind === "unverified"
+                      ? "text-sm text-muted-foreground"
+                      : "text-sm text-primary"
+                  }
                 >
                   {conflict.message}
                 </li>
@@ -306,19 +340,28 @@ export function AssistantSheet({
             }}
           >
             <input
-              className="h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm"
+              className="h-11 min-h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               value={instruction}
               placeholder="想怎么调整"
               aria-label="调整说明"
               onChange={(event) => setInstruction(event.target.value)}
             />
-            <Button type="submit" className="h-11" disabled={!online || phase === "loading"}>
+            <Button
+              type="submit"
+              className="h-11"
+              disabled={!online || phase === "loading"}
+            >
               发送
             </Button>
           </form>
           {phase === "preview" ? (
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" className="h-11" disabled={chosen.length === 0} onClick={() => void apply()}>
+              <Button
+                type="button"
+                className="h-11"
+                disabled={chosen.length === 0}
+                onClick={() => void apply()}
+              >
                 应用所选
               </Button>
               <Button
@@ -337,10 +380,22 @@ export function AssistantSheet({
           ) : null}
           {phase === "applied" || undoId || redoId ? (
             <div className="grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" className="h-11" disabled={!undoId} onClick={() => void undo()}>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                disabled={!undoId}
+                onClick={() => void undo()}
+              >
                 撤销
               </Button>
-              <Button type="button" variant="outline" className="h-11" disabled={!redoId} onClick={() => void redo()}>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11"
+                disabled={!redoId}
+                onClick={() => void redo()}
+              >
                 重做
               </Button>
             </div>

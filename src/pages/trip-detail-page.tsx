@@ -90,7 +90,7 @@ export function TripDetailPage() {
               aria-label="助手"
               onClick={() => setAssistantOpen(true)}
             >
-              <Sparkles />
+              <Sparkles aria-hidden="true" />
             </Button>
             <Button
               type="button"
@@ -99,7 +99,7 @@ export function TripDetailPage() {
               aria-label="版本记录"
               onClick={() => setVersionsOpen(true)}
             >
-              <History />
+              <History aria-hidden="true" />
             </Button>
             <Button
               type="button"
@@ -108,7 +108,7 @@ export function TripDetailPage() {
               aria-label="编辑行程"
               onClick={() => setEditing(true)}
             >
-              <Pencil />
+              <Pencil aria-hidden="true" />
             </Button>
             <Button
               type="button"
@@ -117,7 +117,7 @@ export function TripDetailPage() {
               aria-label="删除行程"
               onClick={() => setConfirmDelete(true)}
             >
-              <Trash2 />
+              <Trash2 aria-hidden="true" />
             </Button>
           </div>
         }

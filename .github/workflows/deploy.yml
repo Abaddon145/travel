@@ -41,9 +41,15 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Scan secrets
+        run: node scripts/scan-secrets.mjs --dist
+
       - name: Deploy Worker
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
+
+      - name: Smoke production
+        run: node scripts/smoke-production.mjs

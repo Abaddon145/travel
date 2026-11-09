@@ -30,7 +30,9 @@ npm run build
 npm run preview
 ```
 
-`test:e2e` 会先构建，再用 HTTPS 预览跑 Playwright。第一次需要 `npx playwright install chromium`。
+`test:e2e` 会先构建，再用 HTTPS 预览跑 Playwright。桌面用 Chromium，iPhone 用 WebKit 的 iPhone 14 描述。第一次需要 `npx playwright install chromium webkit`。DeepSeek 与高德在测试里都是模拟，不会打到付费接口。
+
+发布说明、环境变量名称、部署与回滚见 [docs/RELEASE.md](./docs/RELEASE.md)。真机验收清单见 [docs/stage12/DEVICE_CHECKLIST.md](./docs/stage12/DEVICE_CHECKLIST.md)。
 
 ## 同一源站的接口
 
@@ -51,7 +53,7 @@ npm run dev
 
 ## 部署到 GitHub
 
-工作流在 [Abaddon145/travel](https://github.com/Abaddon145/travel) 的 `main` 上运行：先 lint、typecheck、test、build，再用 Wrangler 部署到 `workers.dev` HTTPS。
+工作流在 [Abaddon145/travel](https://github.com/Abaddon145/travel) 的 `main` 上运行：先 lint、typecheck、test、build、密钥扫描，再用 Wrangler 部署到 `workers.dev` HTTPS，然后做不带密钥的冒烟。合并到 `main` 才会部署。不要在功能分支上执行 `wrangler deploy`。
 
 仓库密钥只在 GitHub 里配置，不要写进代码：
 

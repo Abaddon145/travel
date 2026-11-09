@@ -22,7 +22,7 @@ export function PageHeader({
         {backTo ? (
           <Button variant="ghost" size="icon" asChild>
             <Link to={backTo} aria-label="返回">
-              <ChevronLeft data-icon="inline-start" />
+              <ChevronLeft aria-hidden="true" data-icon="inline-start" />
             </Link>
           </Button>
         ) : null}

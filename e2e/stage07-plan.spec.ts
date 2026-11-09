@@ -150,11 +150,11 @@ test("生成草稿、预览、保存，并截下各种状态", async ({ page }) 
   await page.getByLabel("标题").fill("京都秋日草稿");
   await page.getByRole("button", { name: "保存为行程" }).click();
   await expect(page.getByRole("heading", { name: "京都秋日草稿" })).toBeVisible();
-  await expect(page.getByText("清水寺")).toBeVisible();
+  await expect(page.getByTestId("timeline-name").filter({ hasText: "清水寺" })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "京都秋日草稿" })).toBeVisible();
-  await expect(page.getByText("清水寺")).toBeVisible();
-  await expect(page.getByText("町家")).toBeVisible();
+  await expect(page.getByTestId("timeline-name").filter({ hasText: "清水寺" })).toBeVisible();
+  await expect(page.getByTestId("timeline-name").filter({ hasText: "町家" })).toBeVisible();
 
   await page.goto("/plan");
   await page.getByLabel("目的地").fill("京都");

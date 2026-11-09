@@ -1,15 +1,24 @@
+import { writeFileSync } from "node:fs";
 import path from "node:path";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vitest/config";
+import { renderHeadersFile, securityHeaders } from "./shared/security-headers.ts";
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     basicSsl(),
+    {
+      name: "lvxu-security-headers",
+      apply: "build",
+      closeBundle() {
+        writeFileSync(path.resolve("dist/_headers"), renderHeadersFile());
+      },
+    },
     VitePWA({
       // Prompt keeps the new worker waiting until the user refreshes.
       registerType: "prompt",
@@ -107,6 +116,7 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 43128,
     strictPort: true,
+    headers: securityHeaders,
   },
   test: {
     environment: "jsdom",

@@ -1,5 +1,4 @@
-import { animate } from "motion/react";
-import { useEffect, useRef } from "react";
+import { motion } from "motion/react";
 import { formatMinor } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/types";
 
@@ -14,40 +13,17 @@ export function MoneyFigure({
   currency: CurrencyCode;
   quiet: boolean;
 }) {
-  const node = useRef<HTMLSpanElement>(null);
-  const from = useRef(0);
-  const seenCurrency = useRef(currency);
-  const finalText = formatMinor(minor, currency);
-
-  useEffect(() => {
-    const el = node.current;
-    if (!el) return;
-    const currencyChanged = seenCurrency.current !== currency;
-    seenCurrency.current = currency;
-    if (quiet || currencyChanged) {
-      from.current = minor;
-      el.textContent = finalText;
-      return;
-    }
-    const controls = animate(from.current, minor, {
-      duration: 0.45,
-      ease,
-      onUpdate: (latest) => {
-        const next = Math.round(latest);
-        from.current = next;
-        el.textContent = formatMinor(next, currency);
-      },
-    });
-    return () => controls.stop();
-  }, [minor, currency, quiet, finalText]);
-
+  const text = formatMinor(minor, currency);
   return (
-    <span
-      ref={node}
-      data-final={finalText}
+    <motion.span
+      key={`${currency}:${minor}`}
+      data-final={text}
       className="tabular-nums tracking-tight"
+      initial={quiet ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: quiet ? 0 : 0.2, ease }}
     >
-      {quiet ? finalText : formatMinor(0, currency)}
-    </span>
+      {text}
+    </motion.span>
   );
 }
