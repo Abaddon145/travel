@@ -1,6 +1,9 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "@/components/app-shell";
+import { BookingsPage } from "@/pages/bookings-page";
+import { BudgetPage } from "@/pages/budget-page";
 import { ExplorePage } from "@/pages/explore-page";
+import { KitPage } from "@/pages/kit-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { PlanPage } from "@/pages/plan-page";
 import { ProfilePage } from "@/pages/profile-page";
@@ -15,6 +18,9 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <TripsPage /> },
       { path: "plan", element: <PlanPage /> },
       { path: "trips/:tripId", element: <TripDetailPage /> },
+      { path: "trips/:tripId/budget", element: <BudgetPage /> },
+      { path: "trips/:tripId/bookings", element: <BookingsPage /> },
+      { path: "trips/:tripId/kit", element: <KitPage /> },
       { path: "explore", element: <ExplorePage /> },
       { path: "profile", element: <ProfilePage /> },
       { path: "*", element: <NotFoundPage /> },

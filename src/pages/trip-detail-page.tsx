@@ -4,6 +4,7 @@ import { History, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
+import { TripSectionNav } from "@/components/trip-section-nav";
 import { AssistantSheet } from "@/components/assistant-sheet";
 import { MapPanel } from "@/components/map-panel";
 import { TimelineEditor } from "@/components/timeline-editor";
@@ -29,10 +30,10 @@ export function TripDetailPage() {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const remove = useMutation({
     mutationFn: () => deleteTrip(db, tripId),
-    onSuccess: (snapshot) => {
+    onSuccess: (deleted) => {
       notifyUndo("行程已删除", async () => {
-        await restoreDeletedTrip(db, snapshot);
-        await navigate(`/trips/${snapshot.trip.id}`);
+        await restoreDeletedTrip(db, deleted);
+        await navigate(`/trips/${deleted.snapshot.trip.id}`);
       });
       void navigate("/");
     },
@@ -42,7 +43,12 @@ export function TripDetailPage() {
   if (trip === undefined) {
     return (
       <>
-        <PageHeader title="行程" eyebrow="旅序" backTo="/" />
+        <PageHeader
+          title="行程"
+          eyebrow="旅序"
+          backTo="/"
+          footer={<TripSectionNav tripId={tripId} />}
+        />
         <div className="flex flex-col gap-4 px-4 py-6" aria-busy="true">
           <p className="sr-only">正在读取行程</p>
           <Skeleton className="h-8 w-40" />
@@ -74,6 +80,7 @@ export function TripDetailPage() {
         title={trip.title}
         eyebrow={trip.destination}
         backTo="/"
+        footer={<TripSectionNav tripId={trip.id} />}
         action={
           <div className="flex gap-1">
             <Button
