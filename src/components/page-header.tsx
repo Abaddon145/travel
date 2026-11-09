@@ -8,11 +8,13 @@ export function PageHeader({
   eyebrow,
   backTo,
   action,
+  footer,
 }: {
   title: string;
   eyebrow?: string;
   backTo?: string;
   action?: ReactNode;
+  footer?: ReactNode;
 }) {
   return (
     <header className="sticky top-0 z-20 border-b bg-background/85 px-4 pt-safe backdrop-blur-md">
@@ -30,6 +32,7 @@ export function PageHeader({
         </div>
         {action}
       </div>
+      {footer}
     </header>
   );
 }

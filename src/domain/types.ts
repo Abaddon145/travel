@@ -137,3 +137,81 @@ export type TripVersion = {
   createdAt: number;
   snapshot: TripSnapshot;
 };
+
+export type SpendCategory =
+  | "lodging"
+  | "transport"
+  | "food"
+  | "ticket"
+  | "shopping"
+  | "other";
+
+export type CurrencyCode = "CNY" | "USD" | "JPY" | "EUR" | "HKD" | "TWD" | "KRW";
+
+export type LedgerEntry = {
+  id: string;
+  tripId: string;
+  date: string;
+  category: SpendCategory;
+  title: string;
+  note: string;
+  currency: CurrencyCode;
+  plannedMinor: number;
+  actualMinor: number | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type BookingKind = "lodging" | "train" | "reservation";
+
+export type Booking = {
+  id: string;
+  tripId: string;
+  kind: BookingKind;
+  title: string;
+  date: string;
+  endDate: string;
+  reference: string;
+  detail: string;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ChecklistItem = {
+  id: string;
+  tripId: string;
+  title: string;
+  note: string;
+  done: boolean;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type Favorite = {
+  id: string;
+  tripId: string;
+  title: string;
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type TravelNote = {
+  id: string;
+  tripId: string;
+  title: string;
+  body: string;
+  date: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type TripTools = {
+  ledgerEntries: LedgerEntry[];
+  bookings: Booking[];
+  checklistItems: ChecklistItem[];
+  favorites: Favorite[];
+  travelNotes: TravelNote[];
+};

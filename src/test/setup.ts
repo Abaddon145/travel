@@ -19,6 +19,15 @@ if (typeof navigator !== "undefined" && !("storage" in navigator)) {
   });
 }
 
+if (typeof Element !== "undefined") {
+  if (!Element.prototype.setPointerCapture) {
+    Element.prototype.setPointerCapture = () => undefined;
+  }
+  if (!Element.prototype.releasePointerCapture) {
+    Element.prototype.releasePointerCapture = () => undefined;
+  }
+}
+
 if (typeof window !== "undefined") {
 Object.defineProperty(window, "matchMedia", {
   writable: true,

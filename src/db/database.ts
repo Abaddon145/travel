@@ -2,10 +2,15 @@ import Dexie, { type EntityTable } from "dexie";
 import type { AiUsageEntry } from "@/db/ai-usage";
 import type { RoutePick, StoredRoute } from "@/lib/route-status";
 import type {
+  Booking,
+  ChecklistItem,
   Day,
+  Favorite,
+  LedgerEntry,
   Lodging,
   Place,
   TimelineItem,
+  TravelNote,
   Trip,
   TripVersion,
 } from "@/domain/types";
@@ -30,6 +35,11 @@ export class TravelDatabase extends Dexie {
   aiUsage!: EntityTable<AiUsageEntry, "id">;
   mapRoutes!: EntityTable<StoredRoute, "id">;
   routePicks!: EntityTable<RoutePick, "id">;
+  ledgerEntries!: EntityTable<LedgerEntry, "id">;
+  bookings!: EntityTable<Booking, "id">;
+  checklistItems!: EntityTable<ChecklistItem, "id">;
+  favorites!: EntityTable<Favorite, "id">;
+  travelNotes!: EntityTable<TravelNote, "id">;
 
   constructor(name = DB_NAME, options: TravelDatabaseOptions = {}) {
     super(name);
@@ -73,6 +83,14 @@ export class TravelDatabase extends Dexie {
 
     this.version(6).stores({
       routePicks: "id, tripId, fromItemId, toItemId",
+    });
+
+    this.version(7).stores({
+      ledgerEntries: "id, tripId, date, category, [tripId+date]",
+      bookings: "id, tripId, date, kind, [tripId+kind]",
+      checklistItems: "id, tripId, order",
+      favorites: "id, tripId, createdAt",
+      travelNotes: "id, tripId, updatedAt",
     });
 
     this.on("populate", () => {

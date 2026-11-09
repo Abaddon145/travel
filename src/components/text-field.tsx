@@ -1,3 +1,4 @@
+import type { HTMLAttributes } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -10,6 +11,9 @@ export function TextField({
   error,
   type = "text",
   multiline = false,
+  placeholder,
+  inputMode,
+  autoComplete,
 }: {
   id: string;
   label: string;
@@ -18,6 +22,9 @@ export function TextField({
   error?: string;
   type?: string;
   multiline?: boolean;
+  placeholder?: string;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  autoComplete?: string;
 }) {
   const invalid = Boolean(error);
   return (
@@ -36,6 +43,9 @@ export function TextField({
           id={id}
           type={type}
           value={value}
+          placeholder={placeholder}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
           aria-invalid={invalid ? true : undefined}
           onChange={(event) => onChange(event.target.value)}
         />

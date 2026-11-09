@@ -29,9 +29,9 @@ export function TripsPage() {
   const [pendingDelete, setPendingDelete] = useState<TripSummary | null>(null);
   const remove = useMutation({
     mutationFn: (tripId: string) => deleteTrip(db, tripId),
-    onSuccess: (snapshot) => {
+    onSuccess: (deleted) => {
       setPendingDelete(null);
-      notifyUndo("行程已删除", () => restoreDeletedTrip(db, snapshot));
+      notifyUndo("行程已删除", () => restoreDeletedTrip(db, deleted));
     },
     onError: (error) => notifyError(error),
   });

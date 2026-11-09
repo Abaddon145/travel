@@ -11,6 +11,7 @@ import type {
   TripDetail,
   TripSnapshot,
   TripSummary,
+  TripTools,
   TripVersion,
 } from "@/domain/types";
 import type { TravelDatabase } from "@/db/database";
@@ -38,6 +39,8 @@ import {
   type ItemInput,
   type TripInput,
 } from "@/db/validation";
+import { deleteTripTools, readTripTools, replaceTripTools, toolTables } from "@/db/tools";
+import { parseTripTools } from "@/db/tool-validation";
 
 const VERSION_LIMIT = 30;
 
@@ -316,11 +319,23 @@ export async function updateTrip(db: TravelDatabase, tripId: string, input: unkn
   );
 }
 
-export async function deleteTrip(db: TravelDatabase, tripId: string) {
+export type DeletedTrip = {
+  snapshot: TripSnapshot;
+  tools: TripTools;
+};
+
+function isDeletedTrip(value: unknown): value is { snapshot: unknown; tools?: unknown } {
+  return Boolean(value && typeof value === "object" && "snapshot" in value && !("trip" in value));
+}
+
+export async function deleteTrip(db: TravelDatabase, tripId: string): Promise<DeletedTrip> {
   const snapshot = await readGraph(db, tripId);
   if (!snapshot) throw new NotFoundError();
+  let tools: TripTools = parseTripTools(null);
   await guard(() =>
-    db.transaction("rw", tables(db), async () => {
+    db.transaction("rw", [...tables(db), ...toolTables(db)], async () => {
+      tools = await readTripTools(db, tripId);
+      await deleteTripTools(db, tripId);
       await db.timelineItems.where("tripId").equals(tripId).delete();
       await db.days.where("tripId").equals(tripId).delete();
       await db.places.where("tripId").equals(tripId).delete();
@@ -329,15 +344,18 @@ export async function deleteTrip(db: TravelDatabase, tripId: string) {
       await db.trips.delete(tripId);
     }),
   );
-  return snapshot;
+  return { snapshot, tools };
 }
 
-export async function restoreDeletedTrip(db: TravelDatabase, snapshot: unknown) {
-  const parsed = parseSnapshot(snapshot);
+export async function restoreDeletedTrip(db: TravelDatabase, payload: unknown) {
+  const wrapped = isDeletedTrip(payload);
+  const parsed = parseSnapshot(wrapped ? payload.snapshot : payload);
+  const tools = parseTripTools(wrapped ? payload.tools : null);
   await guard(() =>
-    db.transaction("rw", tables(db), async () => {
+    db.transaction("rw", [...tables(db), ...toolTables(db)], async () => {
       await replaceGraph(db, parsed);
       await writeVersion(db, parsed.trip.id, "撤销删除行程", parsed);
+      await replaceTripTools(db, parsed.trip.id, tools);
     }),
   );
 }

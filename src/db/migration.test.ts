@@ -164,4 +164,33 @@ describe("v1 到 v2 迁移", () => {
     expect((await upgraded.trips.get("keep"))?.title).toBe("仍在");
     expect(upgraded.tables.some((table) => table.name === "routePicks")).toBe(true);
   });
+
+  it("版本 7 保留行程和路线选择，并增加空的账本表", async () => {
+    const name = `v6-${crypto.randomUUID()}`;
+    const legacy = new Dexie(name);
+    legacy.version(6).stores({
+      trips: "id, updatedAt",
+      routePicks: "id, tripId, fromItemId, toItemId",
+    });
+    await legacy.open();
+    await legacy.table("trips").add({ id: "keep", title: "仍在" });
+    await legacy.table("routePicks").add({
+      id: "pick",
+      tripId: "keep",
+      fromItemId: "a",
+      toItemId: "b",
+      mode: "walking",
+    });
+    legacy.close();
+    const upgraded = new TravelDatabase(name, { seed: false });
+    opened.push(upgraded);
+    await upgraded.open();
+    expect((await upgraded.trips.get("keep"))?.title).toBe("仍在");
+    expect(await upgraded.routePicks.count()).toBe(1);
+    expect(await upgraded.ledgerEntries.count()).toBe(0);
+    expect(await upgraded.bookings.count()).toBe(0);
+    expect(await upgraded.checklistItems.count()).toBe(0);
+    expect(await upgraded.favorites.count()).toBe(0);
+    expect(await upgraded.travelNotes.count()).toBe(0);
+  });
 });
