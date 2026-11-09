@@ -7,6 +7,7 @@ import { attachMapMatch, readMapRoutes, readRoutePicks, saveMapRoute, saveRouteP
 import { db } from "@/db/database";
 import type { TimelineEntry } from "@/domain/types";
 import { fetchMapRoute, geocodeCity, loadMapConfig, searchPlaces, type PoiCandidate } from "@/lib/map-client";
+import { useOnline } from "@/lib/online";
 import {
   chosenRouteMode,
   presentRoute,
@@ -34,6 +35,7 @@ export function MapPanel({
   onSelect: (id: string) => void;
 }) {
   const reduce = useReducedMotion();
+  const online = useOnline();
   const [open, setOpen] = useState(false);
   const [phase, setPhase] = useState<MapPhase>("closed");
   const [apiKey, setApiKey] = useState("");
@@ -42,6 +44,8 @@ export function MapPanel({
   const [matchingId, setMatchingId] = useState<string | null>(null);
   const routes = useLiveQuery(() => readMapRoutes(db, tripId), [tripId]) ?? [];
   const picks = useLiveQuery(() => readRoutePicks(db, tripId), [tripId]) ?? [];
+
+  const visiblePhase: MapPhase = !online && open && phase !== "closed" ? "offline" : phase;
 
   async function openMap() {
     setOpen(true);
@@ -60,6 +64,10 @@ export function MapPanel({
   }
 
   async function match(item: TimelineEntry) {
+    if (!navigator.onLine) {
+      setMessage("核对地点需要网络。时间线上已保存的地点仍可查看。");
+      return;
+    }
     setMatchingId(item.id);
     setMessage("");
     const result = await searchPlaces(item.name, destination).catch(() => null);
@@ -99,6 +107,10 @@ export function MapPanel({
   }
 
   async function verify(from: TimelineEntry, to: TimelineEntry, mode: RouteMode) {
+    if (!navigator.onLine) {
+      setMessage("核实路线需要网络。已保存的结果仍会显示，离线时不估算距离。");
+      return;
+    }
     await choose(from.id, to.id, mode);
     if (from.amapLng == null || from.amapLat == null || to.amapLng == null || to.amapLat == null) {
       setMessage("先核对两端地点，才能查询路线。");
@@ -171,12 +183,16 @@ export function MapPanel({
       </div>
       {open ? (
         <div className="overflow-hidden rounded-lg border bg-card">
-          {phase === "offline" ? <p className="px-3 py-6 text-sm">地图需要网络。时间线仍可使用。</p> : null}
-          {phase === "not_configured" ? <p className="px-3 py-6 text-sm">高德密钥还没配置。</p> : null}
-          {phase === "unauthorized" ? <p className="px-3 py-6 text-sm">请先在「我的」里验证私人密钥。</p> : null}
-          {phase === "loading" ? <p className="px-3 py-6 text-sm">正在加载地图。</p> : null}
-          {phase === "error" ? <p className="px-3 py-6 text-sm">地图暂时无法加载。</p> : null}
-          {phase === "ready" ? (
+          {visiblePhase === "offline" ? (
+            <p className="px-3 py-6 text-sm leading-6">
+              地图需要网络。时间线上已保存的地点仍可查看，离线时不估算距离。
+            </p>
+          ) : null}
+          {visiblePhase === "not_configured" ? <p className="px-3 py-6 text-sm">高德密钥还没配置。</p> : null}
+          {visiblePhase === "unauthorized" ? <p className="px-3 py-6 text-sm">请先在「我的」里验证私人密钥。</p> : null}
+          {visiblePhase === "loading" ? <p className="px-3 py-6 text-sm">正在加载地图。</p> : null}
+          {visiblePhase === "error" ? <p className="px-3 py-6 text-sm">地图暂时无法加载。</p> : null}
+          {visiblePhase === "ready" ? (
             <>
               <AmapCanvas apiKey={apiKey} points={points} polyline={selectedLine} onSelect={onSelect} />
               {selectedMissingTrack ? (
@@ -213,8 +229,14 @@ export function MapPanel({
                   ))}
                 </div>
               ) : (
-                <Button type="button" variant="ghost" className="h-11 w-fit" onClick={() => void match(item)}>
-                  核对地点
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-11 w-fit"
+                  disabled={!online}
+                  onClick={() => void match(item)}
+                >
+                  {online ? "核对地点" : "核对需要网络"}
                 </Button>
               )}
               {next ? (
@@ -227,6 +249,7 @@ export function MapPanel({
                     onSelect(item.id);
                     return choose(item.id, next.id, mode);
                   }}
+                  online={online}
                   onVerify={(mode) => {
                     onSelect(item.id);
                     return verify(item, next, mode);
@@ -253,6 +276,7 @@ function LegModes({
   to,
   routes,
   active,
+  online,
   onSelect,
   onVerify,
 }: {
@@ -260,6 +284,7 @@ function LegModes({
   to: TimelineEntry;
   routes: StoredRoute[];
   active: RouteMode | null;
+  online: boolean;
   onSelect: (mode: RouteMode) => void | Promise<void>;
   onVerify: (mode: RouteMode) => void | Promise<void>;
 }) {
@@ -304,6 +329,7 @@ function LegModes({
             type="button"
             variant="ghost"
             className="h-11 w-full rounded-none px-1"
+            disabled={!online}
             onClick={() => void onVerify(mode)}
           >
             {verifyLabel[mode]}

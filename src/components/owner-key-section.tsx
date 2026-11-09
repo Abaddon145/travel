@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useOnline } from "@/lib/online";
 import {
   checkOwnerKey,
   clearOwnerKey,
@@ -24,6 +25,7 @@ const labels: Record<Phase, string> = {
 
 export function OwnerKeySection() {
   const queryClient = useQueryClient();
+  const online = useOnline();
   const [draft, setDraft] = useState(() => readOwnerKey());
   const [stored, setStored] = useState(() => readOwnerKey());
   const [visible, setVisible] = useState(false);
@@ -50,6 +52,11 @@ export function OwnerKeySection() {
       <p className="text-sm leading-6 text-muted-foreground">
         只写在这台设备上，用来打开付费和管理接口。不会同步到别处。
       </p>
+      {online ? null : (
+        <p className="text-sm leading-6 text-muted-foreground">
+          验证私人密钥需要网络。密钥仍只写在这台设备上，不会因为离线被发出去。
+        </p>
+      )}
       <div className="flex items-center gap-2">
         <label className="sr-only" htmlFor="owner-key">
           私人密钥
@@ -98,7 +105,7 @@ export function OwnerKeySection() {
           type="button"
           variant="outline"
           className="h-11"
-          disabled={!stored || phase === "checking"}
+          disabled={!online || !stored || phase === "checking"}
           onClick={() => void verify()}
         >
           验证

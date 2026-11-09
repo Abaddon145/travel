@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiStatusCard } from "@/components/api-status-card";
+import { BackupSection } from "@/components/backup-section";
+import { InstallSection } from "@/components/install-section";
 import { OwnerKeySection } from "@/components/owner-key-section";
 import { UsageStats } from "@/components/usage-stats";
 import { PageHeader } from "@/components/page-header";
@@ -60,6 +62,10 @@ export function ProfilePage() {
             允许持久保存
           </Button>
         </div>
+        <Separator />
+        <InstallSection />
+        <Separator />
+        <BackupSection />
         <Separator />
         <OwnerKeySection />
         <Separator />

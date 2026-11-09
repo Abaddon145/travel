@@ -1,4 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
+import { useOnline } from "@/lib/online";
 import { TripTimeline } from "@/components/trip-timeline";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -138,6 +139,7 @@ export function PlanScreen({
   onSave: () => void;
 }) {
   const reduce = useReducedMotion();
+  const online = useOnline();
   const failure =
     phase.kind === "form" ||
     phase.kind === "generating" ||
@@ -157,7 +159,7 @@ export function PlanScreen({
     >
       {failure ? (
         <div className="flex flex-col gap-4" role="status">
-          <p className="text-sm leading-6">{failureCopy[failure.kind]}</p>
+          <p className="text-sm leading-6">{failure.message || failureCopy[failure.kind]}</p>
           <Button type="button" variant="outline" className="h-11" onClick={onRetry}>
             重试
           </Button>
@@ -175,6 +177,11 @@ export function PlanScreen({
           <p className="text-sm leading-6 text-muted-foreground">
             写下偏好。生成结果先给你看，确认后才写入这台设备。
           </p>
+          {online ? null : (
+            <p className="text-sm leading-6">
+              生成行程需要网络。已保存在这台设备上的行程仍可查看。
+            </p>
+          )}
           <TextField
             id="plan-destination"
             label="目的地"
@@ -242,7 +249,7 @@ export function PlanScreen({
           <p className="text-sm leading-6 text-muted-foreground">
             快速使用 deepseek-flash。细致使用 deepseek-v4-pro，费用更高。
           </p>
-          <Button type="submit" className="h-11">
+          <Button type="submit" className="h-11" disabled={!online}>
             生成草稿
           </Button>
         </form>

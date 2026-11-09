@@ -119,6 +119,7 @@ function TimelineRow({
           <button
             type="button"
             id={`timeline-${item.id}`}
+            data-testid="timeline-name"
             className={`text-left text-base font-medium ${selected ? "text-primary" : ""}`}
             aria-current={selected ? "true" : undefined}
             onClick={() => onSelect(item.id)}

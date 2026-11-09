@@ -15,6 +15,7 @@ import { db } from "@/db/database";
 import { applyAssistantPatch, readMapRoutes, restoreVersion } from "@/db/repository";
 import type { TripDetail } from "@/domain/types";
 import { requestRevision } from "@/lib/assistant-client";
+import { useOnline } from "@/lib/online";
 import { findScheduleConflicts } from "@/lib/schedule-conflicts";
 
 const chips = [
@@ -100,6 +101,7 @@ export function AssistantSheet({
   selectedId: string | null;
 }) {
   const reduce = useReducedMotion();
+  const online = useOnline();
   const routes = useLiveQuery(() => readMapRoutes(db, detail.id), [detail.id]) ?? [];
   const [dayId, setDayId] = useState(detail.days[0]?.id ?? "");
   const [instruction, setInstruction] = useState("");
@@ -121,6 +123,11 @@ export function AssistantSheet({
   async function send(text: string) {
     const instructionText = text.trim();
     if (!instructionText) return;
+    if (!online) {
+      setPhase("error");
+      setStatus("助手需要网络。当前日程不会被修改。");
+      return;
+    }
     setPhase("loading");
     setStatus("");
     setOps([]);
@@ -224,6 +231,11 @@ export function AssistantSheet({
               ))}
             </select>
           </label>
+          {online ? null : (
+            <p className="text-sm leading-6">
+              助手需要网络。已保存的日程仍可查看，不会被修改。
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             {chips.map((chip) => (
               <Button
@@ -231,7 +243,7 @@ export function AssistantSheet({
                 type="button"
                 variant="outline"
                 className="h-11"
-                disabled={phase === "loading"}
+                disabled={!online || phase === "loading"}
                 onClick={() => void send(chip.instruction)}
               >
                 {chip.label}
@@ -300,7 +312,7 @@ export function AssistantSheet({
               aria-label="调整说明"
               onChange={(event) => setInstruction(event.target.value)}
             />
-            <Button type="submit" className="h-11" disabled={phase === "loading"}>
+            <Button type="submit" className="h-11" disabled={!online || phase === "loading"}>
               发送
             </Button>
           </form>

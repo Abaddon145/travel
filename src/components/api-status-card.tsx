@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readApiStatus, type ApiUiState } from "@/lib/api-status";
+import { useOnline } from "@/lib/online";
 import { checkOwnerKey, readOwnerKey } from "@/lib/owner-key";
 
 const copy: Record<ApiUiState["kind"], { title: string; body: string }> = {
@@ -31,6 +32,7 @@ const copy: Record<ApiUiState["kind"], { title: string; body: string }> = {
 
 export function ApiStatusCard() {
   const reduce = useReducedMotion();
+  const online = useOnline();
   const present = useQuery({
     queryKey: ["owner-key-present"],
     queryFn: () => readOwnerKey().length > 0,
@@ -39,19 +41,28 @@ export function ApiStatusCard() {
   const verified = useQuery({
     queryKey: ["owner-key-check"],
     queryFn: () => checkOwnerKey(),
-    enabled: present.data,
+    enabled: online && present.data,
     retry: false,
   });
   const status = useQuery({
     queryKey: ["api-status"],
     queryFn: () => readApiStatus(),
     retry: false,
+    enabled: online,
   });
 
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-sm font-medium">云端接口</h2>
-      {status.isPending ? (
+      {online ? null : (
+        <Alert>
+          <AlertTitle>当前离线</AlertTitle>
+          <AlertDescription>
+            云端接口需要网络。私人密钥仍留在这台设备上，已保存的行程不会因此改变。
+          </AlertDescription>
+        </Alert>
+      )}
+      {!online ? null : status.isPending ? (
         <div className="flex flex-col gap-2" aria-busy="true">
           <p className="sr-only">正在读取接口状态</p>
           <Skeleton className="h-4 w-24" />
