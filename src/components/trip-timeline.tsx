@@ -38,7 +38,9 @@ export function TripTimeline({
               {day.note ? (
                 <p className="text-sm text-muted-foreground">{day.note}</p>
               ) : null}
-              {day.locked ? <p className="text-xs text-muted-foreground">全天已锁定</p> : null}
+              {day.locked ? (
+                <p className="text-xs text-muted-foreground">全天已锁定</p>
+              ) : null}
               {!day.locked && day.lockedFrom && day.lockedTo ? (
                 <p className="text-xs text-muted-foreground">
                   {day.lockedFrom}–{day.lockedTo} 已锁定
@@ -84,7 +86,7 @@ function TimelineRow({
   const Icon = item.kind === "place" ? MapPin : BedDouble;
   return (
     <li
-      className="relative flex flex-col gap-2"
+      className="relative flex flex-col gap-2 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       data-testid="timeline-item"
       tabIndex={onReorder ? 0 : undefined}
       aria-keyshortcuts={onReorder ? "ArrowUp ArrowDown" : undefined}
@@ -104,12 +106,12 @@ function TimelineRow({
           {item.timeLabel || "未定时"}
         </span>
         <Badge variant={item.kind === "place" ? "secondary" : "outline"}>
-          <Icon data-icon="inline-start" />
+          <Icon aria-hidden="true" data-icon="inline-start" />
           {item.kind === "place" ? "景点" : "住宿"}
         </Badge>
         {item.locked ? (
           <Badge variant="outline">
-            <Lock data-icon="inline-start" />
+            <Lock aria-hidden="true" data-icon="inline-start" />
             已锁定
           </Badge>
         ) : null}
@@ -120,7 +122,7 @@ function TimelineRow({
             type="button"
             id={`timeline-${item.id}`}
             data-testid="timeline-name"
-            className={`text-left text-base font-medium ${selected ? "text-primary" : ""}`}
+            className={`rounded-sm text-left text-base font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${selected ? "text-primary" : ""}`}
             aria-current={selected ? "true" : undefined}
             onClick={() => onSelect(item.id)}
           >

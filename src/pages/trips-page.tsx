@@ -43,7 +43,7 @@ export function TripsPage() {
         eyebrow="旅序"
         action={
           <Button type="button" onClick={() => setCreating(true)}>
-            <Plus data-icon="inline-start" />
+            <Plus aria-hidden="true" data-icon="inline-start" />
             新建行程
           </Button>
         }

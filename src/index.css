@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant standalone (@media (display-mode: standalone));
 
 /*
   Spacing rhythm is 8px: use Tailwind steps of 2 (gap-2, p-4, p-6, p-8).
@@ -170,6 +171,22 @@
 
 @utility pb-safe-4 {
   padding-bottom: calc(env(safe-area-inset-bottom) + 1rem);
+}
+
+@media (display-mode: standalone) {
+  html,
+  body,
+  [data-app-shell] {
+    height: 100dvh;
+    overscroll-behavior: none;
+  }
+}
+
+html[data-display="standalone"],
+html[data-display="standalone"] body,
+html[data-display="standalone"] [data-app-shell] {
+  height: 100dvh;
+  overscroll-behavior: none;
 }
 
 @media print {

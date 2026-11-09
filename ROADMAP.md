@@ -48,4 +48,4 @@
 
 ## 12 部署上线与验收
 
-未开始。把 Workers 与前端部署到生产 HTTPS，核对安装、离线外壳、登录门、生成、地图和备份。按验收清单逐项通过后再算完成。
+自动化验收已完成。单元、集成和端到端覆盖新建与编辑、AI 起草、锁定后的局部重排与撤销、地图限界、预算、预订与清单、备份、离线外壳和更新提示。iPhone 用 WebKit 设备描述，桌面用 Chromium。安全头、门禁和密钥扫描写在发布说明里。合并到 `main` 后由 GitHub Actions 部署。真机清单在 [docs/stage12/DEVICE_CHECKLIST.md](./docs/stage12/DEVICE_CHECKLIST.md)，由使用人在部署后勾选。

@@ -6,6 +6,7 @@ import { mapCookieHeader, mapCookieSecret } from "./map/cookie";
 import { handleMapRequest } from "./map/http";
 import { handleAmapProxy } from "./map/proxy";
 import { createLogger } from "./redact";
+import { applySecurityHeaders } from "./security-headers";
 
 const log = createLogger();
 
@@ -25,10 +26,12 @@ export default {
   async fetch(request, env: WorkerEnv) {
     const url = new URL(request.url);
     if (url.pathname.startsWith("/_AMapService")) {
-      return handleAmapProxy(request, env, (input) => env.API_RATE_LIMIT.limit(input));
+      return applySecurityHeaders(
+        await handleAmapProxy(request, env, (input) => env.API_RATE_LIMIT.limit(input)),
+      );
     }
     if (url.pathname.startsWith("/api/")) {
-      const response = await handleApi(request, env, {
+      let response = await handleApi(request, env, {
         verifyJwt: verifyAccessJwt,
         limit: (input) => env.API_RATE_LIMIT.limit(input),
         recordFailure: (input) => env.AUTH_FAILURE_LIMIT.limit(input),
@@ -44,10 +47,10 @@ export default {
         if (secret) {
           const headers = new Headers(response.headers);
           headers.append("set-cookie", await mapCookieHeader(secret));
-          return new Response(response.body, { status: response.status, headers });
+          response = new Response(response.body, { status: response.status, headers });
         }
       }
-      return response;
+      return applySecurityHeaders(response);
     }
     return env.ASSETS.fetch(request);
   },

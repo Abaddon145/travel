@@ -25,5 +25,16 @@ export function ThemeSync() {
     return () => media.removeEventListener("change", apply);
   }, [theme]);
 
+  useEffect(() => {
+    const root = document.documentElement;
+    const media = window.matchMedia("(display-mode: standalone)");
+    const apply = () => {
+      root.dataset.display = media.matches ? "standalone" : "browser";
+    };
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
   return null;
 }

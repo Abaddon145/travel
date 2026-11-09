@@ -6,12 +6,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { KitFormDrawer } from "@/components/kit-form-drawer";
 import { TripToolsFrame } from "@/components/trip-tools-frame";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyTitle,
-} from "@/components/ui/empty";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/db/database";
 import {
@@ -107,7 +102,11 @@ export function KitPage() {
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-sm font-medium">清单</h2>
-                    <Button type="button" variant="outline" onClick={() => openCreate("checklist")}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => openCreate("checklist")}
+                    >
                       <Plus data-icon="inline-start" />
                       添加
                     </Button>
@@ -118,10 +117,10 @@ export function KitPage() {
                     <ul className="divide-y divide-border">
                       {tools.checklistItems.map((item) => (
                         <li key={item.id} className="flex flex-col gap-2 py-3">
-                          <label className="flex min-h-11 items-start gap-3">
+                          <label className="flex min-h-11 items-center gap-3">
                             <input
                               type="checkbox"
-                              className="mt-1 size-4 accent-primary"
+                              className="size-11 shrink-0 accent-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                               checked={item.done}
                               onChange={() => toggle.mutate(item)}
                             />
@@ -158,7 +157,9 @@ export function KitPage() {
                               variant="ghost"
                               size="sm"
                               aria-label={`删除${item.title}`}
-                              onClick={() => setPendingDelete({ kind: "checklist", item })}
+                              onClick={() =>
+                                setPendingDelete({ kind: "checklist", item })
+                              }
                             >
                               <Trash2 data-icon="inline-start" />
                               删除
@@ -172,7 +173,11 @@ export function KitPage() {
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-sm font-medium">收藏</h2>
-                    <Button type="button" variant="outline" onClick={() => openCreate("favorite")}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => openCreate("favorite")}
+                    >
                       <Plus data-icon="inline-start" />
                       添加
                     </Button>
@@ -185,7 +190,9 @@ export function KitPage() {
                         <li key={item.id} className="flex flex-col gap-2 py-4">
                           <p className="text-sm">{item.title}</p>
                           {item.note ? (
-                            <p className="text-sm leading-6 text-muted-foreground">{item.note}</p>
+                            <p className="text-sm leading-6 text-muted-foreground">
+                              {item.note}
+                            </p>
                           ) : null}
                           <div className="flex justify-end gap-1">
                             <Button
@@ -218,7 +225,11 @@ export function KitPage() {
                 <section className="flex flex-col gap-3">
                   <div className="flex items-center justify-between gap-3">
                     <h2 className="text-sm font-medium">备注</h2>
-                    <Button type="button" variant="outline" onClick={() => openCreate("note")}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => openCreate("note")}
+                    >
                       <Plus data-icon="inline-start" />
                       添加
                     </Button>
@@ -235,7 +246,9 @@ export function KitPage() {
                               {formatDateWithWeekday(item.date)}
                             </p>
                           ) : null}
-                          <p className="text-sm leading-6 text-muted-foreground">{item.body}</p>
+                          <p className="text-sm leading-6 text-muted-foreground">
+                            {item.body}
+                          </p>
                           <div className="flex justify-end gap-1">
                             <Button
                               type="button"

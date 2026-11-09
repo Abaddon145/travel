@@ -250,6 +250,45 @@ describe("私人密钥门禁", () => {
     expect(byJwt.verifyJwt).toHaveBeenCalledOnce();
   });
 
+  it("私人密钥模式下，付费路径没有密钥一律 401", async () => {
+    const hash = await ownerHash("right-key");
+    const handleAi = vi.fn();
+    const handleMap = vi.fn();
+    const paths = [
+      "/api/ai/itinerary",
+      "/api/ai/revise",
+      "/api/ai/usage",
+      "/api/map/config",
+      "/api/auth/check",
+      "/api/paid/draft",
+      "/api/admin/health",
+    ];
+    for (const path of paths) {
+      const response = await handleApi(
+        new Request(`https://lvxu.test${path}`, {
+          method:
+            path.endsWith("draft") ||
+            path.includes("/ai/itinerary") ||
+            path.includes("/ai/revise")
+              ? "POST"
+              : "GET",
+        }),
+        { ...env, AUTH_MODE: "owner-key", OWNER_KEY_SHA256: hash, ACCESS_DEV_BYPASS: "" },
+        {
+          verifyJwt: vi.fn(),
+          limit: vi.fn(async () => ({ success: true })),
+          recordFailure: vi.fn(async () => ({ success: true })),
+          log: vi.fn(),
+          handleAi,
+          handleMap,
+        },
+      );
+      expect(response.status, path).toBe(401);
+    }
+    expect(handleAi).not.toHaveBeenCalled();
+    expect(handleMap).not.toHaveBeenCalled();
+  });
+
   it("未通过门禁时不会调用生成", async () => {
     const handleAi = vi.fn();
     const response = await handleApi(

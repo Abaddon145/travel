@@ -142,6 +142,10 @@ describe("地图折线", () => {
     ]);
   });
 
+  it("丢掉越界坐标，避免把地图拉出范围", () => {
+    expect(parseAmapPath("200,10;120,95;-181,30;120.1,30.2")).toEqual([[120.1, 30.2]]);
+  });
+
   it("选中的方式会画成一条高德折线", async () => {
     const replies: Record<string, { distanceMeters: number; durationSeconds: number; polyline: string }> = {
       driving: {
