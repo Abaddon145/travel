@@ -28,4 +28,23 @@ describe("安全响应头", () => {
     expect(policy).not.toMatch(/sk-|BEGIN |AKIA|AIza/);
     expect(await response.text()).toBe("{}");
   });
+
+  it("script-src 覆盖高德二级脚本域名", () => {
+    const response = applySecurityHeaders(new Response(null));
+    const policy = response.headers.get("content-security-policy") ?? "";
+    const directive = (name: string) =>
+      policy.split("; ").find((part) => part.startsWith(`${name} `)) ?? "";
+    const scriptSrc = directive("script-src");
+    expect(scriptSrc).toBe(
+      "script-src 'self' https://webapi.amap.com https://*.amap.com 'unsafe-eval'",
+    );
+    expect(scriptSrc).toContain("https://*.amap.com");
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(directive("font-src")).toBe("font-src 'self' data: https://*.amap.com");
+    expect(directive("img-src")).toContain("https://*.autonavi.com");
+    expect(directive("connect-src")).toContain("https://*.autonavi.com");
+    expect(directive("connect-src")).toContain("blob:");
+    expect(directive("style-src")).toBe("style-src 'self' 'unsafe-inline'");
+    expect(directive("worker-src")).toBe("worker-src 'self' blob:");
+  });
 });

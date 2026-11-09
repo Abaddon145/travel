@@ -6,13 +6,13 @@
 export const securityHeaders: Record<string, string> = {
   "content-security-policy": [
     "default-src 'self'",
-    "script-src 'self' https://webapi.amap.com 'unsafe-eval'",
+    "script-src 'self' https://webapi.amap.com https://*.amap.com 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data: blob: https://webapi.amap.com https://*.amap.com https://*.is.autonavi.com",
-    "connect-src 'self' https://webapi.amap.com https://restapi.amap.com https://*.amap.com https://*.is.autonavi.com",
+    "img-src 'self' data: blob: https://webapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com",
+    "connect-src 'self' https://webapi.amap.com https://restapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com blob:",
     "worker-src 'self' blob:",
-    "font-src 'self' data:",
+    "font-src 'self' data: https://*.amap.com",
     "manifest-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

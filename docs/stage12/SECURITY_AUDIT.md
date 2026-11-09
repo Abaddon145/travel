@@ -26,7 +26,7 @@
 
 静态资源走 `public/_headers`（构建时再写入 `dist/_headers`）。`/api` 与 `/_AMapService` 由 Worker 套上同一组头，不改已有的 `cache-control`。
 
-- `Content-Security-Policy`：默认 `'self'`；脚本额外允许 `https://webapi.amap.com` 与 `'unsafe-eval'`（高德 JS API 2.0 会动态加载并使用 eval）；样式允许内联，因为高德和 Motion 会写样式；图片和连接允许高德瓦片域名；`frame-ancestors 'none'`；`object-src 'none'`。不用 `Cross-Origin-Embedder-Policy: require-corp`。
+- `Content-Security-Policy`：默认 `'self'`。`script-src` 为 `'self' https://webapi.amap.com https://*.amap.com 'unsafe-eval'`，不含 `'unsafe-inline'`。高德 JS API 2.0 除 `webapi.amap.com` 外还会插入 `https://mapplugin.amap.com`、`https://vdata.amap.com` 等二级脚本，并使用 eval；只放行主脚本时这些脚本会被 `script-src-elem` 拦住，底图变成空白。`font-src` 为 `'self' data: https://*.amap.com`。`img-src` 与 `connect-src` 在原有高德域名之外增加 `https://*.autonavi.com`，`connect-src` 另允许 `blob:`。样式仍允许内联，因为高德和 Motion 会写样式。`frame-ancestors 'none'`；`object-src 'none'`。不用 `Cross-Origin-Embedder-Policy: require-corp`。
 - `X-Content-Type-Options: nosniff`
 - `X-Frame-Options: DENY`
 - `Referrer-Policy: strict-origin-when-cross-origin`
