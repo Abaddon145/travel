@@ -33,6 +33,11 @@ jobs:
       - name: Install
         run: npm ci
 
+      # tsc -b typechecks the Worker. Its Cloudflare types are generated and
+      # gitignored; this only reads wrangler.jsonc and does not deploy.
+      - name: Generate Worker types
+        run: npm run cf-typegen
+
       - name: Build web assets
         run: npm run build
 
@@ -62,7 +67,8 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            DEVELOPMENT_TEAM=""
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_STYLE=Manual
 
       - name: Package unsigned IPA
         run: |
