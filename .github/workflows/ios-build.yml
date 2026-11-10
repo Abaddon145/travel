@@ -1,0 +1,101 @@
+# Unsigned IPA for Sideloadly. macos-26 is the current GitHub-hosted macOS image.
+# This workflow does not read secrets.
+name: iOS unsigned IPA
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "ios/**"
+      - "capacitor.config.ts"
+      - "assets/**"
+      - "scripts/generate-icons.mjs"
+      - ".github/workflows/ios-build.yml"
+      - "package.json"
+      - "package-lock.json"
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-ipa:
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # tsc -b typechecks the Worker. Its Cloudflare types are generated and
+      # gitignored; this only reads wrangler.jsonc and does not deploy.
+      - name: Generate Worker types
+        run: npm run cf-typegen
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Sync iOS
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        if: hashFiles('ios/App/Podfile') != ''
+        working-directory: ios/App
+        run: pod install
+
+      - name: Archive
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/App.xcarchive"
+          if [[ -d ios/App/App.xcworkspace ]]; then
+            PROJECT_ARGS=(-workspace ios/App/App.xcworkspace)
+          else
+            PROJECT_ARGS=(-project ios/App/App.xcodeproj)
+          fi
+          xcodebuild archive \
+            "${PROJECT_ARGS[@]}" \
+            -scheme App \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$ARCHIVE" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM="" \
+            CODE_SIGN_STYLE=Manual
+
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          ARCHIVE="$RUNNER_TEMP/App.xcarchive"
+          APP_PATH=$(find "$ARCHIVE/Products/Applications" -maxdepth 1 -type d -name '*.app' -print -quit)
+          if [[ -z "${APP_PATH}" ]]; then
+            echo "Archive has no .app"
+            exit 1
+          fi
+          EXECUTABLE=$(plutil -extract CFBundleExecutable raw -o - "$APP_PATH/Info.plist")
+          if ! otool -l "$APP_PATH/$EXECUTABLE" | awk '/LC_BUILD_VERSION/{n=6} n{print; n--}' | grep -q 'platform 2'; then
+            echo "Expected an iOS device binary (LC_BUILD_VERSION platform 2)"
+            otool -l "$APP_PATH/$EXECUTABLE" | awk '/LC_BUILD_VERSION/{n=8} n{print; n--}' || true
+            exit 1
+          fi
+          STAGE="$RUNNER_TEMP/ipa-root"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE/Payload"
+          cp -R "$APP_PATH" "$STAGE/Payload/"
+          (cd "$STAGE" && zip -qry "$GITHUB_WORKSPACE/lvxu-unsigned.ipa" Payload)
+          ls -lh "$GITHUB_WORKSPACE/lvxu-unsigned.ipa"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: lvxu-unsigned-ipa
+          path: lvxu-unsigned.ipa
+          retention-days: 14
+          if-no-files-found: error

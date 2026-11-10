@@ -30,3 +30,10 @@ worker/worker-configuration.d.ts
 *.njsproj
 *.sln
 *.sw?
+
+# Capacitor iOS shell. The synced web copy is produced by cap sync.
+*.ipa
+*.xcarchive
+ios/App/Pods
+DerivedData
+ios/App/App/public
