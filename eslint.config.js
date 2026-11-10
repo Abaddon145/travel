@@ -15,6 +15,7 @@ export default tseslint.config(
       "playwright-report",
       "test-results",
       "worker/worker-configuration.d.ts",
+      "ios/**",
     ],
   },
   js.configs.recommended,
