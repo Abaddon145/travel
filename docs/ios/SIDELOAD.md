@@ -1,19 +1,27 @@
 # 在 Windows 上安装未签名的旅序
 
-iOS 壳用 Capacitor 8 包住现有站点。GitHub Actions 的 macOS 机器只产出未签名的 `.ipa`。签名在你自己的 Windows 上完成，用免费 Apple ID 和 Sideloadly。
+iOS 壳用 Capacitor 8 装进已经构建好的网页。GitHub Actions 的 macOS 机器只产出未签名的 `.ipa`。签名在你自己的 Windows 上完成，用免费 Apple ID 和 Sideloadly。
 
-## 为什么壳加载线上地址
+## 壳里是本地页面
 
-`capacitor.config.ts` 里 `server.url` 是 `https://lvxu-ai-travel.lvxu.workers.dev`。壳打开的就是这个源，而不是把 `dist` 塞进 `capacitor://`。
+`capacitor.config.ts` 不再设置 `server.url`。`webDir` 是 `dist`。装好以后，App 打开的是包里的页面，源是 `capacitor://localhost`，不是 `https://lvxu-ai-travel.lvxu.workers.dev`。
 
-这个取舍是为了让现有 PWA 原样工作：
+行程、预算、装备、备份的导入和导出都在本机（IndexedDB / Dexie）。线上站点打不开时，这些仍然可以看、可以改。断网也可以打开 App。
 
-- 接口都是相对路径 `/api`。WebView 的源必须是这个站点，请求才会打到 Worker。
-- 地图代理 `/_AMapService` 依赖第一方 cookie `lvxu_map`，属性是 `SameSite=Strict`。自定义 scheme 带不上这张 cookie。
-- 内容安全策略是 `'self'`。脚本、Worker 和接口都按这个源校验。
-- Service Worker 不能在 `capacitor://` 自定义 scheme 上注册。线上地址仍然是 HTTPS，注册方式和 Safari 一样。
+下面这些需要手机联网，并且要能访问现有的 Cloudflare Worker：
 
-没有设置 `allowNavigation`，也没有打开 cleartext。壳只打开上面的 HTTPS 源，不放行别的域名，也不允许明文 HTTP。
+- AI 助手
+- 高德地图（地点、路线，以及底图走 Worker 上的 `/_AMapService`）
+- 天气
+- 在「我的」里验证私人密钥
+
+Worker 地址仍是 `https://lvxu-ai-travel.lvxu.workers.dev`。密钥留在 Worker 上，不写进 App。
+
+网页版还是原来的 HTTPS 站点：相对路径 `/api`、`SameSite=Strict` 的 `lvxu_map` cookie、Service Worker 和 CSP 都不变。壳和网页不共用这套 cookie。壳在联网时用本机保存的私人密钥，以 `Authorization` 访问 Worker。
+
+壳里不注册 Service Worker。页面已经在安装包里，更新 App 要重新签名安装，不是网页上的刷新提示。
+
+没有设置 `allowNavigation`，也没有打开 cleartext。壳不把整个窗口导航到别的网站。
 
 Bundle ID 是 `app.lvxu.travel`。显示名是「旅序」。
 
@@ -21,8 +29,9 @@ Bundle ID 是 `app.lvxu.travel`。显示名是「旅序」。
 
 工作流名称是「iOS unsigned IPA」，文件是 `.github/workflows/ios-build.yml`。
 
-- 触发：手动运行，或 pull request 改到 `ios/**`、`capacitor.config.ts`、`assets/**`、`scripts/generate-icons.mjs`、这个工作流、`package.json`、`package-lock.json`。
+- 触发：手动运行，或 pull request 改到 `ios/**`、`capacitor.config.ts`、`assets/**`、`scripts/generate-icons.mjs`、这个工作流、`package.json`、`package-lock.json`、`src/**`、`index.html`、`public/**`、`shared/**`、`vite.config.ts`。
 - 机器：`macos-26`。这是当前 GitHub 托管的 macOS 镜像，也是 `macos-latest` 指向的版本。
+- 构建会执行 `npm run build` 和 `npx cap sync ios`，把 `dist` 打进包。
 - 权限只有 `contents: read`。步骤里不读取任何 secret、证书或 Apple ID。
 - 上传的 artifact 名称是 `lvxu-unsigned-ipa`，里面是 `lvxu-unsigned.ipa`，保留 14 天。
 

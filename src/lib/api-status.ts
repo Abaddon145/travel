@@ -1,3 +1,5 @@
+import { resolveApiPath } from "@/lib/api-origin";
+
 export type ApiAuthMode = "owner-key" | "access" | "either";
 
 export type ApiUiState = {
@@ -21,7 +23,7 @@ export async function readApiStatus(
   fetchImpl: typeof fetch = fetch,
 ): Promise<ApiUiState> {
   try {
-    const response = await fetchImpl("/api/status", {
+    const response = await fetchImpl(resolveApiPath("/api/status"), {
       headers: { accept: "application/json" },
     });
     if (response.status === 429) return { kind: "rate_limited" };

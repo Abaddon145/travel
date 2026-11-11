@@ -13,6 +13,11 @@ on:
       - ".github/workflows/ios-build.yml"
       - "package.json"
       - "package-lock.json"
+      - "src/**"
+      - "index.html"
+      - "public/**"
+      - "shared/**"
+      - "vite.config.ts"
 
 permissions:
   contents: read

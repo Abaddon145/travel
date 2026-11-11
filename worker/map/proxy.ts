@@ -1,3 +1,5 @@
+import { enforceRateLimit, rateLimitKey, type RateLimiter } from "../rate-limit";
+import { ownerKeyMatches, readPresentedOwnerKey } from "../owner-key";
 import { mapCookieSecret, mapCookieValid } from "./cookie";
 
 export type ProxyEnv = {
@@ -10,7 +12,10 @@ export type ProxyEnv = {
 function failure(status: number, error: string, message: string) {
   return new Response(JSON.stringify({ error, message }), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+    headers: {
+      "content-type": "application/json; charset=utf-8",
+      "cache-control": "no-store",
+    },
   });
 }
 
@@ -19,14 +24,15 @@ export async function handleAmapProxy(
   env: ProxyEnv,
   limit: (input: { key: string }) => Promise<{ success: boolean }>,
   fetchImpl: typeof fetch = (input, init) => fetch(input, init),
+  recordFailure?: RateLimiter["limit"],
 ) {
   const secret = mapCookieSecret(env);
   const security = env.AMAP_JS_SECURITY_CODE?.trim() ?? "";
   if (!secret || !security) {
     return failure(501, "not_configured", "高德安全密钥还没配置。");
   }
-  const allowed = await mapCookieValid(secret, request.headers.get("cookie"));
-  if (!allowed) return failure(401, "unauthorized", "地图代理需要已验证的本机。");
+  const denied = await authorizeProxy(request, secret, recordFailure);
+  if (denied) return denied;
 
   const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
   const gate = await limit({ key: `amap-proxy:${ip}` });
@@ -60,4 +66,22 @@ export async function handleAmapProxy(
       "cache-control": "no-store",
     },
   });
+}
+
+async function authorizeProxy(
+  request: Request,
+  secret: string,
+  recordFailure?: RateLimiter["limit"],
+) {
+  if (await mapCookieValid(secret, request.headers.get("cookie"))) return null;
+  const presented = readPresentedOwnerKey(request);
+  if (presented && (await ownerKeyMatches(presented, secret))) return null;
+  if (presented && recordFailure) {
+    const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
+    const failureKey = await rateLimitKey(null, `auth-fail:${ip}`);
+    const blocked =
+      (await enforceRateLimit({ limit: recordFailure }, failureKey)) === "limited";
+    if (blocked) return failure(429, "rate_limited", "请求过于频繁。");
+  }
+  return failure(401, "unauthorized", "地图代理需要已验证的本机。");
 }

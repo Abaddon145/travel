@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { renderHeadersFile, securityHeaders } from "./shared/security-headers.ts";
+import { workerOrigin } from "./shared/shell-origin.ts";
+import {
+  injectContentSecurityPolicy,
+  metaContentSecurityPolicy,
+  renderHeadersFile,
+  securityHeaders,
+} from "./shared/security-headers.ts";
 
 describe("静态资源安全头", () => {
   it("public/_headers 与共享策略一致", () => {
@@ -10,9 +16,17 @@ describe("静态资源安全头", () => {
       expect(file).toContain(value);
     }
     const policy = securityHeaders["content-security-policy"] ?? "";
-    const scriptSrc = policy.split("; ").find((part) => part.startsWith("script-src ")) ?? "";
+    const scriptSrc =
+      policy.split("; ").find((part) => part.startsWith("script-src ")) ?? "";
     expect(scriptSrc).toContain("https://*.amap.com");
     expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(policy).toContain(workerOrigin);
+    expect(metaContentSecurityPolicy()).toContain(workerOrigin);
+    expect(metaContentSecurityPolicy()).not.toContain("frame-ancestors");
+    const html = injectContentSecurityPolicy("<html><head></head><body></body></html>");
+    expect(html).toContain('http-equiv="Content-Security-Policy"');
+    expect(html).toContain(workerOrigin);
+    expect(injectContentSecurityPolicy(html)).toBe(html);
     expect(file).toContain("Cache-Control: public, max-age=31536000, immutable");
     expect(file).toContain("/assets/*");
   });

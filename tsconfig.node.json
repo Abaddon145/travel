@@ -23,6 +23,7 @@
   "include": [
     "vite.config.ts",
     "shared/security-headers.ts",
+    "shared/shell-origin.ts",
     "vite.headers.test.ts",
     "capacitor.config.ts"
   ]

@@ -1,3 +1,4 @@
+import { resolveApiPath } from "@/lib/api-origin";
 import { gatedHeaders } from "@/lib/owner-key";
 import type { RouteMode } from "@/lib/route-status";
 
@@ -19,8 +20,13 @@ export type MapRouteResult = {
 };
 
 async function readJson(path: string) {
-  const response = await fetch(path, { headers: gatedHeaders(path, { accept: "application/json" }) });
-  const body = (await response.json().catch(() => null)) as { error?: string; message?: string } | null;
+  const response = await fetch(resolveApiPath(path), {
+    headers: gatedHeaders(path, { accept: "application/json" }),
+  });
+  const body = (await response.json().catch(() => null)) as {
+    error?: string;
+    message?: string;
+  } | null;
   return { response, body };
 }
 
@@ -42,12 +48,15 @@ export async function loadMapConfig(): Promise<
 export async function searchPlaces(keywords: string, region: string) {
   const query = new URLSearchParams({ keywords, region });
   const { response, body } = await readJson(`/api/map/poi/search?${query}`);
-  if (!response.ok) return { ok: false as const, message: body?.message ?? "没有搜到地点" };
-  return { ok: true as const, pois: ((body as { pois?: PoiCandidate[] }).pois ?? []) };
+  if (!response.ok)
+    return { ok: false as const, message: body?.message ?? "没有搜到地点" };
+  return { ok: true as const, pois: (body as { pois?: PoiCandidate[] }).pois ?? [] };
 }
 
 export async function geocodeCity(address: string) {
-  const { response, body } = await readJson(`/api/map/geocode?address=${encodeURIComponent(address)}`);
+  const { response, body } = await readJson(
+    `/api/map/geocode?address=${encodeURIComponent(address)}`,
+  );
   if (!response.ok || !body) return "";
   return typeof (body as { citycode?: unknown }).citycode === "string"
     ? (body as { citycode: string }).citycode

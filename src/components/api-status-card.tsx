@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { readApiStatus, type ApiUiState } from "@/lib/api-status";
+import { isNativeShell } from "@/lib/api-origin";
 import { useOnline } from "@/lib/online";
 import { checkOwnerKey, readOwnerKey } from "@/lib/owner-key";
 
@@ -105,6 +106,12 @@ function describe(state: ApiUiState, verified?: string) {
   }
   if (state.authMode === "access" && state.kind === "unconfigured") {
     return copy.unconfigured;
+  }
+  if (state.kind === "error" && isNativeShell()) {
+    return {
+      title: copy.error.title,
+      body: "没有连上旅序的云端接口。已保存在这台手机上的行程仍可查看，AI 和地图需要网络。",
+    };
   }
   return copy[state.kind];
 }
