@@ -27,12 +27,6 @@ test("私人密钥设置的几种状态", async ({ page }) => {
   await expect(page.getByLabel("私人密钥")).toHaveAttribute("type", "text");
   await page.getByRole("button", { name: "隐藏" }).click();
 
-  await page.getByLabel("私人密钥").fill("device-key");
-  await page.getByRole("button", { name: "保存", exact: true }).click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "已保存在这台设备" }),
-  ).toBeVisible();
-
   await page.route("**/api/auth/check", async (route) => {
     expect(route.request().headers().authorization).toBe("Bearer device-key");
     await new Promise((resolve) => setTimeout(resolve, 300));
@@ -42,7 +36,8 @@ test("私人密钥设置的几种状态", async ({ page }) => {
       body: JSON.stringify({ ok: true }),
     });
   });
-  await page.getByRole("button", { name: "验证", exact: true }).click();
+  await page.getByLabel("私人密钥").fill("device-key");
+  await page.getByRole("button", { name: "保存并验证", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "验证中" })).toBeVisible();
   await expect(page.getByRole("status").filter({ hasText: "已通过" })).toBeVisible();
 
@@ -53,7 +48,7 @@ test("私人密钥设置的几种状态", async ({ page }) => {
       body: JSON.stringify({ auth: "unauthorized", error: "unauthorized" }),
     });
   });
-  await page.getByRole("button", { name: "验证", exact: true }).click();
+  await page.getByRole("button", { name: "保存并验证", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "密钥无效" })).toBeVisible();
 
   await page.route("**/api/auth/check", async (route) => {
@@ -63,11 +58,11 @@ test("私人密钥设置的几种状态", async ({ page }) => {
       body: JSON.stringify({ auth: "rate_limited", error: "rate_limited" }),
     });
   });
-  await page.getByRole("button", { name: "验证", exact: true }).click();
+  await page.getByRole("button", { name: "保存并验证", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "尝试过多" })).toBeVisible();
 
   await page.route("**/api/auth/check", (route) => route.abort("failed"));
-  await page.getByRole("button", { name: "验证", exact: true }).click();
+  await page.getByRole("button", { name: "保存并验证", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "网络错误" })).toBeVisible();
 
   await page.getByRole("button", { name: "清除", exact: true }).click();

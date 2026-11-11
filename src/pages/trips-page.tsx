@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { CalendarDays, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, MoreHorizontal, Plus } from "lucide-react";
 import { Link } from "react-router";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
+import { SwipeRow } from "@/components/swipe-row";
 import { TripFormDrawer } from "@/components/trip-form-drawer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,21 +21,41 @@ import { db } from "@/db/database";
 import { deleteTrip, restoreDeletedTrip } from "@/db/repository";
 import type { TripSummary } from "@/domain/types";
 import { useTripSummaries } from "@/hooks/use-travel-data";
+import { coverColor } from "@/lib/cover-color";
 import { formatDateRange } from "@/lib/dates";
 import { notifyError, notifyUndo } from "@/lib/feedback";
+import { tripPhase, tripStatusLabel, type TripPhase } from "@/lib/trip-phase";
+
+const groupOrder: { id: TripPhase; title: string }[] = [
+  { id: "active", title: "进行中" },
+  { id: "upcoming", title: "即将出发" },
+  { id: "past", title: "已结束" },
+];
 
 export function TripsPage() {
   const trips = useTripSummaries();
   const [creating, setCreating] = useState(false);
+  const [menuId, setMenuId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<TripSummary | null>(null);
   const remove = useMutation({
     mutationFn: (tripId: string) => deleteTrip(db, tripId),
     onSuccess: (deleted) => {
       setPendingDelete(null);
+      setMenuId(null);
       notifyUndo("行程已删除", () => restoreDeletedTrip(db, deleted));
     },
     onError: (error) => notifyError(error),
   });
+
+  const groups =
+    trips === undefined
+      ? []
+      : groupOrder
+          .map((group) => ({
+            ...group,
+            trips: trips.filter((trip) => tripPhase(trip) === group.id),
+          }))
+          .filter((group) => group.trips.length > 0);
 
   return (
     <>
@@ -71,38 +92,71 @@ export function TripsPage() {
             </EmptyHeader>
           </Empty>
         ) : (
-          <ul className="flex flex-col gap-4">
-            {trips.map((trip) => (
-              <li key={trip.id} className="flex flex-col gap-2">
-                <Link to={`/trips/${trip.id}`} className="block">
-                  <Card>
-                    <CardHeader>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge variant="secondary">{trip.destination}</Badge>
-                        <span className="text-xs text-muted-foreground tabular-nums">
-                          {formatDateRange(trip.startDate, trip.endDate)}
-                        </span>
+          groups.map((group) => (
+            <section key={group.id} className="flex flex-col gap-3">
+              <h2 className="text-sm font-medium">{group.title}</h2>
+              <ul className="flex flex-col gap-4">
+                {group.trips.map((trip) => (
+                  <li key={trip.id}>
+                    <SwipeRow onDelete={() => setPendingDelete(trip)}>
+                      <div className="flex flex-col gap-2">
+                        <Link to={`/trips/${trip.id}`} className="block">
+                          <Card className="overflow-hidden">
+                            <div
+                              aria-hidden="true"
+                              className="h-1.5"
+                              style={{ background: coverColor(trip.destination) }}
+                            />
+                            <CardHeader>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="secondary">{trip.destination}</Badge>
+                                <span className="text-xs text-muted-foreground tabular-nums">
+                                  {formatDateRange(trip.startDate, trip.endDate)}
+                                </span>
+                                <span className="text-xs font-medium tabular-nums">
+                                  {tripStatusLabel(trip)}
+                                </span>
+                              </div>
+                              <CardTitle>{trip.title}</CardTitle>
+                              <CardDescription>{trip.summary}</CardDescription>
+                            </CardHeader>
+                          </Card>
+                        </Link>
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            aria-expanded={menuId === trip.id}
+                            aria-label={`更多${trip.title}`}
+                            onClick={() =>
+                              setMenuId((current) => (current === trip.id ? null : trip.id))
+                            }
+                          >
+                            <MoreHorizontal data-icon="inline-start" />
+                            更多
+                          </Button>
+                        </div>
+                        {menuId === trip.id ? (
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              aria-label={`删除${trip.title}`}
+                              onClick={() => setPendingDelete(trip)}
+                            >
+                              删除
+                            </Button>
+                          </div>
+                        ) : null}
                       </div>
-                      <CardTitle>{trip.title}</CardTitle>
-                      <CardDescription>{trip.summary}</CardDescription>
-                    </CardHeader>
-                  </Card>
-                </Link>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`删除${trip.title}`}
-                    onClick={() => setPendingDelete(trip)}
-                  >
-                    <Trash2 data-icon="inline-start" />
-                    删除
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    </SwipeRow>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
         )}
       </section>
       <TripFormDrawer open={creating} onOpenChange={setCreating} />

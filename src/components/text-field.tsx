@@ -14,6 +14,8 @@ export function TextField({
   placeholder,
   inputMode,
   autoComplete,
+  onFocus,
+  onBlur,
 }: {
   id: string;
   label: string;
@@ -25,6 +27,8 @@ export function TextField({
   placeholder?: string;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   autoComplete?: string;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }) {
   const invalid = Boolean(error);
   return (
@@ -36,6 +40,8 @@ export function TextField({
           value={value}
           aria-invalid={invalid ? true : undefined}
           onChange={(event) => onChange(event.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
           rows={3}
         />
       ) : (
@@ -48,6 +54,8 @@ export function TextField({
           autoComplete={autoComplete}
           aria-invalid={invalid ? true : undefined}
           onChange={(event) => onChange(event.target.value)}
+          onFocus={onFocus}
+          onBlur={onBlur}
         />
       )}
       {error ? <FieldError>{error}</FieldError> : null}

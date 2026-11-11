@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { overviewFitPadding, parseAmapPath, routeFitPadding, routeStroke } from "@/lib/amap-path";
+import { overviewFitPadding, parseAmapPath, routeFitPadding } from "@/lib/amap-path";
 
 type AmapMap = {
   add: (overlay: unknown) => void;
@@ -34,23 +34,42 @@ type AmapNamespace = {
   Pixel: new (x: number, y: number) => unknown;
 };
 
+export type MapPoint = {
+  id: string;
+  lng: number;
+  lat: number;
+  label: string;
+  color: string;
+  badge: string;
+  selected: boolean;
+};
+
+export type MapLine = {
+  id: string;
+  polyline: string;
+  color: string;
+};
+
 export function AmapCanvas({
   apiKey,
   points,
-  polyline,
+  lines,
   onSelect,
 }: {
   apiKey: string;
-  points: { id: string; lng: number; lat: number; label: string }[];
-  polyline: string;
+  points: MapPoint[];
+  lines: MapLine[];
   onSelect: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const selectRef = useRef(onSelect);
   const pointsRef = useRef(points);
-  const lineRef = useRef(polyline);
+  const linesRef = useRef(lines);
   const drawRef = useRef<() => void>(() => undefined);
-  const pointsKey = points.map((point) => `${point.id}:${point.lng}:${point.lat}:${point.label}`).join("|");
+  const pointsKey = points
+    .map((point) => `${point.id}:${point.lng}:${point.lat}:${point.badge}:${point.color}:${point.selected}`)
+    .join("|");
+  const linesKey = lines.map((line) => `${line.id}:${line.color}:${line.polyline}`).join("|");
 
   useEffect(() => {
     selectRef.current = onSelect;
@@ -58,7 +77,8 @@ export function AmapCanvas({
 
   useEffect(() => {
     pointsRef.current = points;
-  }, [points]);
+    linesRef.current = lines;
+  }, [points, lines]);
 
   useEffect(() => {
     const container = ref.current;
@@ -90,23 +110,24 @@ export function AmapCanvas({
           if (cancelled) return;
           if (overlays.length > 0) created.remove(overlays);
           overlays = [];
-          pointsRef.current.forEach((point, index) => {
+          pointsRef.current.forEach((point) => {
             const marker = new AMap.Marker({
               position: [point.lng, point.lat],
-              zIndex: 140,
-              content: `<span style="background:${routeStroke};color:#fff;border-radius:999px;padding:2px 6px;font-size:12px">${index + 1}</span>`,
+              zIndex: point.selected ? 180 : 140,
+              content: `<span class="lvxu-pin${point.selected ? " is-selected" : ""}" style="display:inline-flex;min-width:1.25rem;justify-content:center;background:${point.color};color:#fff;border-radius:999px;padding:2px 6px;font-size:12px">${point.badge}</span>`,
               offset: new AMap.Pixel(-10, -10),
             });
             marker.on("click", () => selectRef.current(point.id));
             created.add(marker);
             overlays.push(marker);
           });
-          const markers = [...overlays];
-          const path = parseAmapPath(lineRef.current).map(([lng, lat]) => new AMap.LngLat(lng, lat));
-          if (path.length > 1) {
-            const line = new AMap.Polyline({
+          const fitted = [...overlays];
+          for (const line of linesRef.current) {
+            const path = parseAmapPath(line.polyline).map(([lng, lat]) => new AMap.LngLat(lng, lat));
+            if (path.length < 2) continue;
+            const overlay = new AMap.Polyline({
               path,
-              strokeColor: routeStroke,
+              strokeColor: line.color,
               strokeOpacity: 1,
               strokeWeight: 6,
               zIndex: 120,
@@ -117,16 +138,16 @@ export function AmapCanvas({
               outlineColor: "#fffaf6",
               borderWeight: 2,
             });
-            created.add(line);
-            overlays.push(line);
-            created.setFitView([line], false, routeFitPadding);
-            return;
+            created.add(overlay);
+            overlays.push(overlay);
+            fitted.push(overlay);
           }
-          created.setFitView(markers, false, overviewFitPadding);
+          created.setFitView(fitted, false, fitted.length > pointsRef.current.length ? routeFitPadding : overviewFitPadding);
         };
         drawRef.current = draw;
         created.on("complete", draw);
         draw();
+        requestAnimationFrame(draw);
       })
       .catch(() => {
         container.dataset.mapError = "1";
@@ -140,12 +161,12 @@ export function AmapCanvas({
   }, [apiKey, pointsKey]);
 
   useEffect(() => {
-    lineRef.current = polyline;
+    linesRef.current = lines;
     drawRef.current();
-  }, [polyline]);
+  }, [lines, linesKey]);
 
   if (points.length === 0) {
     return <p className="px-3 py-6 text-sm text-muted-foreground">核对地点后才会在地图上标出。</p>;
   }
-  return <div ref={ref} className="h-56 w-full" data-testid="amap-canvas" />;
+  return <div ref={ref} className="h-full min-h-56 w-full" data-testid="amap-canvas" />;
 }

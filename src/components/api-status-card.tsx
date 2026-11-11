@@ -125,8 +125,8 @@ function StatusBody({
   return (
     <motion.div
       className="flex flex-col gap-4"
-      initial={reduce ? false : { opacity: 0, transform: "translateY(6px)" }}
-      animate={{ opacity: 1, transform: "translateY(0px)" }}
+      initial={reduce ? false : { transform: "translateY(6px)" }}
+      animate={{ transform: "translateY(0px)" }}
       transition={{ duration: reduce ? 0 : 0.2, ease: [0.22, 1, 0.36, 1] }}
     >
       <Alert variant={destructive ? "destructive" : "default"}>

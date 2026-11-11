@@ -6,7 +6,6 @@ import {
   Drawer,
   DrawerContent,
   DrawerDescription,
-  DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -15,7 +14,16 @@ import { db } from "@/db/database";
 import { restoreVersion } from "@/db/repository";
 import type { TripVersion } from "@/domain/types";
 import { useTripVersions } from "@/hooks/use-travel-data";
-import { notifyError, notifySuccess } from "@/lib/feedback";
+import { notifyError } from "@/lib/feedback";
+
+function versionPreview(version: TripVersion) {
+  const names = [
+    ...version.snapshot.places.map((place) => place.name),
+    ...version.snapshot.lodgings.map((lodging) => lodging.name),
+  ].slice(0, 6);
+  const count = version.snapshot.days.length;
+  return `${count} 天${names.length > 0 ? ` · ${names.join("、")}` : ""}`;
+}
 
 export function VersionDrawer({
   open,
@@ -28,10 +36,11 @@ export function VersionDrawer({
 }) {
   const versions = useTripVersions(tripId);
   const [pending, setPending] = useState<TripVersion | null>(null);
+  const [restored, setRestored] = useState(false);
   const mutation = useMutation({
     mutationFn: (versionId: string) => restoreVersion(db, versionId),
     onSuccess: () => {
-      notifySuccess("已恢复到该版本");
+      setRestored(true);
       setPending(null);
     },
     onError: (error) => notifyError(error),
@@ -41,18 +50,21 @@ export function VersionDrawer({
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="pb-safe">
-          <DrawerHeader>
-            <DrawerTitle>版本记录</DrawerTitle>
-            <DrawerDescription>
-              每次有意义的修改都会留下改之前的行程。恢复会覆盖当前内容，包括已锁定的项目。
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="flex justify-end px-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex items-center gap-2 px-4 pt-2">
+            <DrawerTitle className="min-w-0 flex-1">版本记录</DrawerTitle>
+            <Button type="button" variant="outline" className="h-11" onClick={() => onOpenChange(false)}>
               关闭
             </Button>
           </div>
-          <div className="flex flex-col gap-2 overflow-y-auto px-4 pb-4">
+          <DrawerDescription className="px-4 pt-2">
+            每次有意义的修改都会留下改之前的行程。恢复会覆盖当前内容，包括已锁定的项目。
+          </DrawerDescription>
+          <div className="flex flex-col gap-2 overflow-y-auto px-4 py-4">
+            {restored ? (
+              <p role="status" className="text-sm">
+                已恢复到该版本
+              </p>
+            ) : null}
             {versions === undefined ? (
               <Skeleton className="h-16 w-full" />
             ) : versions.length === 0 ? (
@@ -76,6 +88,7 @@ export function VersionDrawer({
                           hour12: false,
                         })}
                       </p>
+                      <p className="text-xs text-muted-foreground">{versionPreview(version)}</p>
                     </div>
                     <Button
                       type="button"
@@ -97,7 +110,11 @@ export function VersionDrawer({
       <ConfirmDialog
         open={Boolean(pending)}
         title="恢复这个版本？"
-        description="当前行程会被替换。锁定的项目也会回到该版本里的状态。"
+        description={
+          pending
+            ? `${versionPreview(pending)}。当前行程会被替换。锁定的项目也会回到该版本里的状态。`
+            : "当前行程会被替换。"
+        }
         confirmLabel="恢复"
         pending={mutation.isPending}
         onOpenChange={(next) => {

@@ -9,6 +9,8 @@ export function Toaster({ ...props }: ToasterProps) {
     <Sonner
       theme={theme}
       className="toaster group"
+      offset="calc(env(safe-area-inset-top) + 12px)"
+      mobileOffset="calc(env(safe-area-inset-top) + 12px)"
       toastOptions={{
         classNames: {
           toast: "cn-toast",

@@ -1,18 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion, useReducedMotion } from "motion/react";
 import type { PatchOp } from "@shared/revise-schema";
+import { OwnerKeyForm } from "@/components/owner-key-form";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
-  DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Skeleton } from "@/components/ui/skeleton";
+import { recordAiUsage } from "@/db/ai-usage";
 import { db } from "@/db/database";
 import { applyAssistantPatch, readMapRoutes, restoreVersion } from "@/db/repository";
+import { readAssistantSession, writeAssistantSession } from "@/lib/assistant-session";
 import type { TripDetail } from "@/domain/types";
 import { requestRevision } from "@/lib/assistant-client";
 import { useOnline } from "@/lib/online";
@@ -116,10 +119,13 @@ export function AssistantSheet({
 }) {
   const reduce = useReducedMotion();
   const online = useOnline();
+  const queryClient = useQueryClient();
   const routes = useLiveQuery(() => readMapRoutes(db, detail.id), [detail.id]) ?? [];
-  const [dayId, setDayId] = useState(detail.days[0]?.id ?? "");
-  const [instruction, setInstruction] = useState("");
-  const [history, setHistory] = useState<Turn[]>([]);
+  const stored = readAssistantSession(detail.id);
+  const [dayId, setDayId] = useState(stored.dayId || detail.days[0]?.id || "");
+  const [instruction, setInstruction] = useState(stored.instruction);
+  const [history, setHistory] = useState<Turn[]>(stored.history);
+  const [needsKey, setNeedsKey] = useState(false);
   const [phase, setPhase] = useState<
     "idle" | "loading" | "error" | "preview" | "applied"
   >("idle");
@@ -133,6 +139,10 @@ export function AssistantSheet({
   const activeDay = detail.days.some((day) => day.id === dayId)
     ? dayId
     : (detail.days[0]?.id ?? "");
+
+  useEffect(() => {
+    writeAssistantSession(detail.id, { history, instruction, dayId: activeDay });
+  }, [detail.id, history, instruction, activeDay]);
   const chosen = ops.filter((_, index) => checked[index]);
   const conflicts = findScheduleConflicts(previewDays(detail, chosen), routes).filter(
     (conflict) => chosen.some((op) => dayIdFor(detail, op) === conflict.dayId),
@@ -183,7 +193,21 @@ export function AssistantSheet({
     if (!result.ok) {
       setPhase("error");
       setStatus(result.message);
+      setNeedsKey(result.error === "unauthorized");
       return;
+    }
+    setNeedsKey(false);
+    try {
+      await recordAiUsage(db, {
+        id: crypto.randomUUID(),
+        createdAt: Date.now(),
+        destination: detail.destination,
+        ...result.usage,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage"] });
+      await queryClient.invalidateQueries({ queryKey: ["ai-usage-remote"] });
+    } catch {
+      // The suggestion can still be reviewed if the local usage row is rejected.
     }
     setHistory((current) =>
       [...current, { role: "assistant" as const, text: result.message }].slice(-8),
@@ -229,12 +253,33 @@ export function AssistantSheet({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="pb-safe">
-        <DrawerHeader>
-          <DrawerTitle>助手</DrawerTitle>
-          <DrawerDescription>锁定的项目不会被改动。确认后才写入。</DrawerDescription>
-        </DrawerHeader>
+        <div className="flex items-center gap-2 px-4 pt-2">
+          <DrawerTitle className="min-w-0 flex-1">助手</DrawerTitle>
+          <Button type="button" variant="ghost" className="h-11" onClick={() => onOpenChange(false)}>
+            关闭
+          </Button>
+        </div>
+        <DrawerDescription className="px-4 pt-2">锁定的项目不会被改动。确认后才写入。</DrawerDescription>
+        <form
+          className="flex gap-2 px-4 pt-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void send(instruction);
+          }}
+        >
+          <input
+            className="h-11 min-h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            value={instruction}
+            placeholder="想怎么调整"
+            aria-label="调整说明"
+            onChange={(event) => setInstruction(event.target.value)}
+          />
+          <Button type="submit" className="h-11" disabled={!online || phase === "loading"}>
+            发送
+          </Button>
+        </form>
         <motion.div
-          className="flex max-h-[65vh] flex-col gap-3 overflow-y-auto px-4 pb-4"
+          className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
           initial={reduce ? false : { opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: reduce ? 0 : 0.18 }}
@@ -258,6 +303,7 @@ export function AssistantSheet({
               助手需要网络。已保存的日程仍可查看，不会被修改。
             </p>
           )}
+          {needsKey ? <OwnerKeyForm /> : null}
           <div className="flex flex-wrap gap-2">
             {chips.map((chip) => (
               <Button
@@ -332,28 +378,6 @@ export function AssistantSheet({
               ))}
             </ul>
           ) : null}
-          <form
-            className="flex gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void send(instruction);
-            }}
-          >
-            <input
-              className="h-11 min-h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 text-base outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              value={instruction}
-              placeholder="想怎么调整"
-              aria-label="调整说明"
-              onChange={(event) => setInstruction(event.target.value)}
-            />
-            <Button
-              type="submit"
-              className="h-11"
-              disabled={!online || phase === "loading"}
-            >
-              发送
-            </Button>
-          </form>
           {phase === "preview" ? (
             <div className="grid grid-cols-2 gap-2">
               <Button

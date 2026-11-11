@@ -29,6 +29,10 @@ if (typeof Element !== "undefined") {
 }
 
 if (typeof window !== "undefined") {
+  window.scrollTo = () => undefined;
+  if (typeof Element.prototype.scrollIntoView !== "function") {
+    Element.prototype.scrollIntoView = () => undefined;
+  }
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({

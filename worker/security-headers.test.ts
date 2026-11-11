@@ -44,6 +44,7 @@ describe("安全响应头", () => {
     expect(directive("img-src")).toContain("https://*.autonavi.com");
     expect(directive("connect-src")).toContain("https://*.autonavi.com");
     expect(directive("connect-src")).toContain("blob:");
+    expect(directive("connect-src")).toContain("https://api.open-meteo.com");
     expect(directive("style-src")).toBe("style-src 'self' 'unsafe-inline'");
     expect(directive("worker-src")).toBe("worker-src 'self' blob:");
   });

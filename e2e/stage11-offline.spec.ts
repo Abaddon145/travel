@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { settleEnter } from "./settle-enter";
 
 const directory = "docs/stage11/screenshots";
 
@@ -8,6 +9,7 @@ test.beforeAll(() => {
 });
 
 async function shot(page: Page, name: string) {
+  await settleEnter(page);
   await page.screenshot({ path: `${directory}/${name}.png` });
 }
 
@@ -160,6 +162,8 @@ test("离线可打开已保存的行程，且不缓存鉴权响应", async ({ pa
   await page.getByRole("link", { name: /京都秋日/ }).click();
   await expect(page.getByRole("heading", { name: /京都秋日/ })).toBeVisible();
   await expect(page.getByText("清水寺").first()).toBeVisible();
+  await page.getByRole("button", { name: "展开地图" }).click();
+  await page.getByRole("button", { name: /清水寺/ }).first().click();
   await expect(page.getByRole("button", { name: "核对需要网络" }).first()).toBeVisible();
   await shot(page, "iphone-offline-trip");
 

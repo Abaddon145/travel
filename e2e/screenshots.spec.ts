@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { settleEnter } from "./settle-enter";
 
 const directory = "/opt/cursor/artifacts/screenshots";
 
@@ -11,6 +12,7 @@ test("记录 iPhone 视口下的主要界面", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(page.getByRole("link", { name: /京都秋日/ })).toBeVisible();
+  await settleEnter(page);
   await page.screenshot({ path: `${directory}/trip-list.png` });
 
   await page.getByRole("link", { name: /京都秋日/ }).click();
@@ -23,9 +25,11 @@ test("记录 iPhone 视口下的主要界面", async ({ page }) => {
   await page.getByRole("button", { name: "取消" }).click();
 
   await page.getByText("清水寺", { exact: true }).scrollIntoViewIfNeeded();
+  await page.getByTestId("timeline-name").filter({ hasText: "清水寺" }).first().click();
   await page.getByRole("button", { name: "锁定清水寺" }).click();
   await expect(page.getByRole("button", { name: "解锁清水寺" })).toBeVisible();
   await page.screenshot({ path: `${directory}/locked-item.png` });
+  await page.getByRole("button", { name: "关闭" }).click();
 
   await page.getByRole("button", { name: "版本记录" }).click();
   await expect(page.getByRole("button", { name: "关闭" })).toBeInViewport({ ratio: 1 });
@@ -35,6 +39,7 @@ test("记录 iPhone 视口下的主要界面", async ({ page }) => {
 
   await page.goto("/");
   for (const title of ["京都秋日", "杭州周末"]) {
+    await page.getByRole("button", { name: `更多${title}` }).click();
     await page.getByRole("button", { name: `删除${title}` }).click();
     await page.getByRole("button", { name: "删除", exact: true }).click();
     await expect(page.getByRole("link", { name: new RegExp(title) })).toBeHidden();

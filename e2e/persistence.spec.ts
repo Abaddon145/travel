@@ -42,6 +42,7 @@ test("创建的行程在刷新后仍在，锁定、排序和恢复版本可用",
     "白川庵",
     "二年坂",
   ]);
+  await page.getByTestId("timeline-name").filter({ hasText: "二年坂" }).click();
   await page.getByRole("button", { name: "上移二年坂" }).click();
   await page.getByRole("button", { name: "上移二年坂" }).click();
   await expect(page.getByTestId("timeline-name")).toHaveText([
@@ -57,11 +58,13 @@ test("创建的行程在刷新后仍在，锁定、排序和恢复版本可用",
     "白川庵",
   ]);
 
+  await page.getByTestId("timeline-name").filter({ hasText: "清水寺" }).first().click();
   await page.getByRole("button", { name: "锁定清水寺" }).click();
   await expect(page.getByRole("button", { name: "编辑清水寺" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "上移清水寺" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "下移清水寺" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "删除清水寺" })).toBeDisabled();
+  await page.getByRole("button", { name: "关闭" }).click();
 
   await page.getByRole("button", { name: "编辑行程" }).click();
   await page.getByLabel("标题").fill("京都测试改");

@@ -50,7 +50,7 @@ export function ProfilePage() {
         <div className="flex flex-col gap-4">
           <h2 className="text-sm font-medium">这台设备</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            旅序是单人行程本，没有账号。行程写在这台设备的 IndexedDB 里。
+            旅序是单人行程本，没有账号。行程只留在这台设备上。
           </p>
           <p className="text-sm leading-6 text-muted-foreground">{storageText}</p>
           <Button

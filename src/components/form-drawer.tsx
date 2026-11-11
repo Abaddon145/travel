@@ -1,11 +1,9 @@
-import type { FormEvent, ReactNode } from "react";
+import type { FocusEvent, FormEvent, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
   DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Spinner } from "@/components/ui/spinner";
@@ -34,31 +32,38 @@ export function FormDrawer({
     void onSubmit();
   };
 
+  const reveal = (event: FocusEvent<HTMLFormElement>) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    requestAnimationFrame(() => {
+      target.scrollIntoView?.({ block: "nearest" });
+    });
+  };
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="pb-safe">
-        <DrawerHeader>
-          <DrawerTitle>{title}</DrawerTitle>
-          <DrawerDescription>{description}</DrawerDescription>
-        </DrawerHeader>
-        <form onSubmit={submit} className="flex min-h-0 flex-col">
-          <div className="flex flex-col gap-4 overflow-y-auto px-4">{children}</div>
-          <DrawerFooter>
-            <Button type="submit" disabled={pending}>
-              {pending ? (
-                <Spinner data-icon="inline-start" aria-label="正在保存" />
-              ) : null}
-              {submitLabel}
-            </Button>
+      <DrawerContent>
+        <form onSubmit={submit} onFocus={reveal} className="flex min-h-0 flex-1 flex-col">
+          <div className="flex items-center gap-2 px-4 pt-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
+              className="h-11"
               disabled={pending}
               onClick={() => onOpenChange(false)}
             >
               取消
             </Button>
-          </DrawerFooter>
+            <DrawerTitle className="min-w-0 flex-1 truncate text-center">{title}</DrawerTitle>
+            <Button type="submit" className="h-11" disabled={pending}>
+              {pending ? <Spinner data-icon="inline-start" aria-label="正在保存" /> : null}
+              {submitLabel}
+            </Button>
+          </div>
+          <DrawerDescription className="px-4 pt-2 text-center">{description}</DrawerDescription>
+          <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 py-4 pb-safe">
+            {children}
+          </div>
         </form>
       </DrawerContent>
     </Drawer>

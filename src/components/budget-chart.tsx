@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { categoryLabel, formatMinor, type CategorySlice } from "@/domain/money";
+import { categoryLabel, formatMinor, isOverBudget, type CategorySlice } from "@/domain/money";
 import type { CurrencyCode } from "@/domain/types";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +43,8 @@ export function BudgetChart({
       {rows.map((row) => {
         const actualText =
           row.openCount === row.entryCount ? "未记" : formatMinor(row.actualMinor, currency);
+        const over =
+          row.openCount !== row.entryCount && isOverBudget(row.plannedMinor, row.actualMinor);
         return (
           <div key={row.category} className="flex flex-col gap-2">
             <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -53,10 +55,10 @@ export function BudgetChart({
             </div>
             <Bar ratio={row.plannedMinor / max} quiet={quiet} tone="planned" />
             <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span className="text-primary">实际</span>
-              <span className="tabular-nums text-primary">{actualText}</span>
+              <span className={over ? "text-primary" : undefined}>实际</span>
+              <span className={over ? "tabular-nums text-primary" : "tabular-nums"}>{actualText}</span>
             </div>
-            <Bar ratio={row.actualMinor / max} quiet={quiet} tone="actual" />
+            <Bar ratio={row.actualMinor / max} quiet={quiet} tone={over ? "actual" : "planned"} />
           </div>
         );
       })}

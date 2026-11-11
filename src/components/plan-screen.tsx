@@ -1,5 +1,9 @@
+import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
+import { OwnerKeyForm } from "@/components/owner-key-form";
 import { useOnline } from "@/lib/online";
+import { interestTags, suggestDestinations } from "@/lib/destinations";
+import { splitInterests } from "@shared/ai-schema";
 import { TripTimeline } from "@/components/trip-timeline";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -140,6 +144,9 @@ export function PlanScreen({
 }) {
   const reduce = useReducedMotion();
   const online = useOnline();
+  const [destinationFocus, setDestinationFocus] = useState(false);
+  const suggestions = suggestDestinations(form.destination);
+  const selectedInterests = splitInterests(form.interests);
   const failure =
     phase.kind === "form" ||
     phase.kind === "generating" ||
@@ -160,6 +167,7 @@ export function PlanScreen({
       {failure ? (
         <div className="flex flex-col gap-4" role="status">
           <p className="text-sm leading-6">{failure.message || failureCopy[failure.kind]}</p>
+          {failure.kind === "unauthorized" ? <OwnerKeyForm onVerified={onRetry} /> : null}
           <Button type="button" variant="outline" className="h-11" onClick={onRetry}>
             重试
           </Button>
@@ -188,7 +196,25 @@ export function PlanScreen({
             value={form.destination}
             error={errors.destination}
             onChange={(value) => onForm({ destination: value })}
+            onFocus={() => setDestinationFocus(true)}
+            onBlur={() => setDestinationFocus(false)}
           />
+          {destinationFocus && suggestions.length > 0 ? (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="目的地建议">
+              {suggestions.map((name) => (
+                <Button
+                  key={name}
+                  type="button"
+                  variant="outline"
+                  className="h-11"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => onForm({ destination: name })}
+                >
+                  {name}
+                </Button>
+              ))}
+            </div>
+          ) : null}
           <TextField
             id="plan-start"
             label="开始日期"
@@ -225,13 +251,32 @@ export function PlanScreen({
             options={paces}
             onChange={(pace) => onForm({ pace })}
           />
-          <TextField
-            id="plan-interests"
-            label="兴趣"
-            value={form.interests}
-            error={errors.interests}
-            onChange={(value) => onForm({ interests: value })}
-          />
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium">兴趣</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="兴趣">
+              {interestTags.map((tag) => {
+                const pressed = selectedInterests.includes(tag);
+                return (
+                  <Button
+                    key={tag}
+                    type="button"
+                    className="h-11"
+                    variant={pressed ? "default" : "outline"}
+                    aria-pressed={pressed}
+                    onClick={() => {
+                      const next = pressed
+                        ? selectedInterests.filter((item) => item !== tag)
+                        : [...selectedInterests, tag].slice(0, 8);
+                      onForm({ interests: next.join("、") });
+                    }}
+                  >
+                    {tag}
+                  </Button>
+                );
+              })}
+            </div>
+            {errors.interests ? <p className="text-sm text-destructive">{errors.interests}</p> : null}
+          </div>
           <TextField
             id="plan-notes"
             label="备注"
@@ -241,13 +286,13 @@ export function PlanScreen({
             onChange={(value) => onForm({ notes: value })}
           />
           <Choices
-            label="模型"
+            label="草稿"
             value={form.model}
             options={models}
             onChange={(model) => onForm({ model })}
           />
           <p className="text-sm leading-6 text-muted-foreground">
-            快速使用 deepseek-flash。细致使用 deepseek-v4-pro，费用更高。
+            快速更省时间。细致会多想一层，费用更高。
           </p>
           <Button type="submit" className="h-11" disabled={!online}>
             生成草稿
@@ -281,10 +326,15 @@ export function PlanScreen({
               ))}
             </ul>
           ) : null}
-          <p className="text-sm text-muted-foreground">
-            尝试 {phase.usage.attempts} 次，共 {phase.usage.totalTokens} 个令牌，按美元估算{" "}
-            {formatUsd(estimateUsd(phase.usage))}。
-          </p>
+          <details className="rounded-lg border">
+            <summary className="flex min-h-11 cursor-pointer items-center px-3 text-sm">
+              这次生成的细节
+            </summary>
+            <p className="px-3 pb-3 text-sm text-muted-foreground">
+              尝试 {phase.usage.attempts} 次，共 {phase.usage.totalTokens} 个令牌，按美元估算{" "}
+              {formatUsd(estimateUsd(phase.usage))}。
+            </p>
+          </details>
           <TripTimeline days={toTimeline({ ...phase.draft, title })} />
           <div className="flex flex-wrap gap-2">
             <Button type="button" className="h-11" onClick={onSave}>

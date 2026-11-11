@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { settleEnter } from "./settle-enter";
 
 const directory = "docs/stage07/screenshots";
 
@@ -126,6 +127,7 @@ test("生成草稿、预览、保存，并截下各种状态", async ({ page }) 
   await page.goto("/");
   await page.getByRole("link", { name: "用 AI 起草" }).click();
   await expect(page.getByRole("button", { name: "生成草稿" })).toBeVisible();
+  await settleEnter(page);
   await page.screenshot({ path: `${directory}/empty.png` });
 
   await page.getByLabel("目的地").fill("京都");

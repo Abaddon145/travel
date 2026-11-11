@@ -13,5 +13,14 @@ describe("静态资源安全头", () => {
     const scriptSrc = policy.split("; ").find((part) => part.startsWith("script-src ")) ?? "";
     expect(scriptSrc).toContain("https://*.amap.com");
     expect(scriptSrc).not.toContain("'unsafe-inline'");
+    expect(file).toContain("Cache-Control: public, max-age=31536000, immutable");
+    expect(file).toContain("/assets/*");
+  });
+
+  it("robots.txt 是真实文件，而不是页面外壳", () => {
+    const file = readFileSync("public/robots.txt", "utf8");
+    expect(file).toContain("User-agent: *");
+    expect(file).toContain("Disallow: /");
+    expect(file).not.toContain("<html");
   });
 });
