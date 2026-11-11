@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { overviewFitPadding, parseAmapPath, routeFitPadding } from "@/lib/amap-path";
 import { amapServiceHost } from "@/lib/api-origin";
 
@@ -66,6 +66,7 @@ export function AmapCanvas({
   onSelect: (id: string) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [loadError, setLoadError] = useState(false);
   const selectRef = useRef(onSelect);
   const pointsRef = useRef(points);
   const linesRef = useRef(lines);
@@ -94,6 +95,7 @@ export function AmapCanvas({
     if (!container || pointsRef.current.length === 0) return undefined;
     let cancelled = false;
     let map: AmapMap | null = null;
+    setLoadError(false);
 
     window._AMapSecurityConfig = { serviceHost: amapServiceHost() };
     void import("@amap/amap-jsapi-loader")
@@ -167,7 +169,8 @@ export function AmapCanvas({
         requestAnimationFrame(draw);
       })
       .catch(() => {
-        container.dataset.mapError = "1";
+        if (cancelled) return;
+        setLoadError(true);
       });
 
     return () => {
@@ -189,5 +192,18 @@ export function AmapCanvas({
       </p>
     );
   }
-  return <div ref={ref} className="h-full min-h-56 w-full" data-testid="amap-canvas" />;
+  return (
+    <div
+      ref={ref}
+      className="h-full min-h-56 w-full"
+      data-testid="amap-canvas"
+      data-map-error={loadError ? "1" : undefined}
+    >
+      {loadError ? (
+        <p className="px-3 py-6 text-sm leading-6">
+          底图没有加载。地点和路线仍可使用；若它们已经显示，多半是高德没有接受当前页面来源。
+        </p>
+      ) : null}
+    </div>
+  );
 }
