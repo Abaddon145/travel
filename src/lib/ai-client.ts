@@ -1,4 +1,5 @@
 import { draftSchema, type TravelDraft, type TravelPreference } from "@shared/ai-schema";
+import { resolveApiPath } from "@/lib/api-origin";
 import { gatedHeaders } from "@/lib/owner-key";
 import type { PricedUsage } from "@/lib/ai-cost";
 
@@ -41,10 +42,12 @@ function asFailure(value: unknown): AiFailure {
     : "network";
 }
 
-export async function requestItinerary(preference: TravelPreference): Promise<ItineraryResult> {
+export async function requestItinerary(
+  preference: TravelPreference,
+): Promise<ItineraryResult> {
   let response: Response;
   try {
-    response = await fetch("/api/ai/itinerary", {
+    response = await fetch(resolveApiPath("/api/ai/itinerary"), {
       method: "POST",
       headers: gatedHeaders("/api/ai/itinerary", {
         accept: "application/json",
@@ -62,7 +65,11 @@ export async function requestItinerary(preference: TravelPreference): Promise<It
     usage?: PricedUsage;
   } | null;
   if (response.status === 401) {
-    return { ok: false, error: "unauthorized", message: "未授权。请先在「我的」里保存并通过私人密钥。" };
+    return {
+      ok: false,
+      error: "unauthorized",
+      message: "未授权。请先在「我的」里保存并通过私人密钥。",
+    };
   }
   if (!response.ok || !body) {
     const error = asFailure(body?.error);
@@ -88,7 +95,7 @@ export type ServerUsage = {
 
 export async function readServerUsage(): Promise<ServerUsage | null> {
   try {
-    const response = await fetch("/api/ai/usage", {
+    const response = await fetch(resolveApiPath("/api/ai/usage"), {
       headers: gatedHeaders("/api/ai/usage", { accept: "application/json" }),
     });
     if (!response.ok) return null;

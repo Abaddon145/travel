@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { overviewFitPadding, parseAmapPath, routeFitPadding } from "@/lib/amap-path";
+import { amapServiceHost } from "@/lib/api-origin";
 
 type AmapMap = {
   add: (overlay: unknown) => void;
@@ -10,7 +11,10 @@ type AmapMap = {
 };
 
 type AmapNamespace = {
-  Map: new (container: HTMLElement, options?: { zoom?: number; center?: [number, number] }) => AmapMap;
+  Map: new (
+    container: HTMLElement,
+    options?: { zoom?: number; center?: [number, number] },
+  ) => AmapMap;
   Marker: new (options: {
     position: [number, number];
     content?: string;
@@ -67,9 +71,14 @@ export function AmapCanvas({
   const linesRef = useRef(lines);
   const drawRef = useRef<() => void>(() => undefined);
   const pointsKey = points
-    .map((point) => `${point.id}:${point.lng}:${point.lat}:${point.badge}:${point.color}:${point.selected}`)
+    .map(
+      (point) =>
+        `${point.id}:${point.lng}:${point.lat}:${point.badge}:${point.color}:${point.selected}`,
+    )
     .join("|");
-  const linesKey = lines.map((line) => `${line.id}:${line.color}:${line.polyline}`).join("|");
+  const linesKey = lines
+    .map((line) => `${line.id}:${line.color}:${line.polyline}`)
+    .join("|");
 
   useEffect(() => {
     selectRef.current = onSelect;
@@ -86,7 +95,7 @@ export function AmapCanvas({
     let cancelled = false;
     let map: AmapMap | null = null;
 
-    window._AMapSecurityConfig = { serviceHost: `${window.location.origin}/_AMapService` };
+    window._AMapSecurityConfig = { serviceHost: amapServiceHost() };
     void import("@amap/amap-jsapi-loader")
       .then((module) =>
         module.default.load({
@@ -123,7 +132,9 @@ export function AmapCanvas({
           });
           const fitted = [...overlays];
           for (const line of linesRef.current) {
-            const path = parseAmapPath(line.polyline).map(([lng, lat]) => new AMap.LngLat(lng, lat));
+            const path = parseAmapPath(line.polyline).map(
+              ([lng, lat]) => new AMap.LngLat(lng, lat),
+            );
             if (path.length < 2) continue;
             const overlay = new AMap.Polyline({
               path,
@@ -142,7 +153,13 @@ export function AmapCanvas({
             overlays.push(overlay);
             fitted.push(overlay);
           }
-          created.setFitView(fitted, false, fitted.length > pointsRef.current.length ? routeFitPadding : overviewFitPadding);
+          created.setFitView(
+            fitted,
+            false,
+            fitted.length > pointsRef.current.length
+              ? routeFitPadding
+              : overviewFitPadding,
+          );
         };
         drawRef.current = draw;
         created.on("complete", draw);
@@ -166,7 +183,11 @@ export function AmapCanvas({
   }, [lines, linesKey]);
 
   if (points.length === 0) {
-    return <p className="px-3 py-6 text-sm text-muted-foreground">核对地点后才会在地图上标出。</p>;
+    return (
+      <p className="px-3 py-6 text-sm text-muted-foreground">
+        核对地点后才会在地图上标出。
+      </p>
+    );
   }
   return <div ref={ref} className="h-full min-h-56 w-full" data-testid="amap-canvas" />;
 }

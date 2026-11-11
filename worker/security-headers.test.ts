@@ -7,14 +7,19 @@ describe("安全响应头", () => {
     const response = applySecurityHeaders(
       new Response("{}", {
         status: 200,
-        headers: { "cache-control": "public, max-age=60", "content-type": "application/json" },
+        headers: {
+          "cache-control": "public, max-age=60",
+          "content-type": "application/json",
+        },
       }),
     );
     expect(response.headers.get("cache-control")).toBe("public, max-age=60");
     expect(response.headers.get("content-type")).toContain("application/json");
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(response.headers.get("x-frame-options")).toBe("DENY");
-    expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin");
+    expect(response.headers.get("referrer-policy")).toBe(
+      "strict-origin-when-cross-origin",
+    );
     expect(response.headers.get("strict-transport-security")).toBe(
       "max-age=15552000; includeSubDomains",
     );
@@ -45,6 +50,9 @@ describe("安全响应头", () => {
     expect(directive("connect-src")).toContain("https://*.autonavi.com");
     expect(directive("connect-src")).toContain("blob:");
     expect(directive("connect-src")).toContain("https://api.open-meteo.com");
+    expect(directive("connect-src")).toContain("https://lvxu-ai-travel.lvxu.workers.dev");
+    expect(directive("connect-src")).toContain("'self'");
+    expect(directive("img-src")).toContain("https://lvxu-ai-travel.lvxu.workers.dev");
     expect(directive("style-src")).toBe("style-src 'self' 'unsafe-inline'");
     expect(directive("worker-src")).toBe("worker-src 'self' blob:");
   });

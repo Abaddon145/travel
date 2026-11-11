@@ -1,9 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "@/App";
+import { installNativeProxyAuth } from "@/lib/native-proxy-auth";
 import { ensurePwa } from "@/pwa/register";
 import "@/index.css";
 
+installNativeProxyAuth();
 ensurePwa();
 
 const root = document.getElementById("root");

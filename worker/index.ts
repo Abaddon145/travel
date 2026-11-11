@@ -1,7 +1,9 @@
+import { isShellOrigin } from "../shared/shell-origin";
 import { verifyAccessJwt } from "./access";
 import { handleAiRequest, type AiEnv, type UsageNamespace } from "./ai/http";
 import { AiUsageLedger } from "./ai/usage-ledger";
 import { handleApi } from "./api";
+import { shellPreflight, withShellCors } from "./cors";
 import { mapCookieHeader, mapCookieSecret } from "./map/cookie";
 import { handleMapRequest } from "./map/http";
 import { handleAmapProxy } from "./map/proxy";
@@ -22,15 +24,30 @@ type WorkerEnv = Env &
 
 export { AiUsageLedger };
 
+function shellRequest(request: Request) {
+  return isShellOrigin(request.headers.get("origin"));
+}
+
 export default {
   async fetch(request, env: WorkerEnv) {
     const url = new URL(request.url);
-    if (url.pathname.startsWith("/_AMapService")) {
-      return applySecurityHeaders(
-        await handleAmapProxy(request, env, (input) => env.API_RATE_LIMIT.limit(input)),
-      );
+    const proxied = url.pathname.startsWith("/_AMapService");
+    const api = url.pathname.startsWith("/api/");
+    if ((proxied || api) && request.method === "OPTIONS") {
+      const preflight = shellPreflight(request);
+      if (preflight) return applySecurityHeaders(preflight);
     }
-    if (url.pathname.startsWith("/api/")) {
+    if (proxied) {
+      const response = await handleAmapProxy(
+        request,
+        env,
+        (input) => env.API_RATE_LIMIT.limit(input),
+        (input, init) => fetch(input, init),
+        (input) => env.AUTH_FAILURE_LIMIT.limit(input),
+      );
+      return applySecurityHeaders(withShellCors(request, response));
+    }
+    if (api) {
       let response = await handleApi(request, env, {
         verifyJwt: verifyAccessJwt,
         limit: (input) => env.API_RATE_LIMIT.limit(input),
@@ -41,6 +58,7 @@ export default {
       });
       if (
         response.ok &&
+        !shellRequest(request) &&
         (url.pathname === "/api/auth/check" || url.pathname === "/api/map/config")
       ) {
         const secret = mapCookieSecret(env);
@@ -50,7 +68,7 @@ export default {
           response = new Response(response.body, { status: response.status, headers });
         }
       }
-      return applySecurityHeaders(response);
+      return applySecurityHeaders(withShellCors(request, response));
     }
     return env.ASSETS.fetch(request);
   },

@@ -1,3 +1,5 @@
+import { isNativeShell } from "@/lib/api-origin";
+
 type PwaSnapshot = {
   needRefresh: boolean;
   offlineReady: boolean;
@@ -39,6 +41,7 @@ export function applyPwaUpdate() {
 export function ensurePwa() {
   if (started) return;
   started = true;
+  if (isNativeShell()) return;
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   void import("virtual:pwa-register")
     .then(({ registerSW }) => {

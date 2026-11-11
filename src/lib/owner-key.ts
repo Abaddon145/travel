@@ -1,3 +1,5 @@
+import { resolveApiPath } from "@/lib/api-origin";
+
 const STORAGE_KEY = "lvxu-owner-key";
 
 export type OwnerKeyCheck = "ok" | "invalid" | "limited" | "unconfigured" | "error";
@@ -33,7 +35,7 @@ export async function checkOwnerKey(
   fetchImpl: typeof fetch = fetch,
 ): Promise<OwnerKeyCheck> {
   try {
-    const response = await fetchImpl("/api/auth/check", {
+    const response = await fetchImpl(resolveApiPath("/api/auth/check"), {
       method: "GET",
       headers: gatedHeaders("/api/auth/check", { accept: "application/json" }),
     });

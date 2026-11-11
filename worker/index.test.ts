@@ -51,5 +51,80 @@ describe("Worker 入口", () => {
     expect(page.status).toBe(200);
     expect(assets).toHaveBeenCalledOnce();
     expect(page.headers.get("content-security-policy")).toBeNull();
+    expect(page.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("只给原生壳加 CORS，网页版仍写 Strict cookie", async () => {
+    const hash = await ownerHash("right-key");
+    const limit = vi.fn(async () => ({ success: true }));
+    const assets = vi.fn(async () => new Response("page", { status: 200 }));
+    const env = {
+      ENVIRONMENT: "production",
+      AUTH_MODE: "owner-key",
+      OWNER_KEY_SHA256: hash,
+      ACCESS_DEV_BYPASS: "",
+      AMAP_JS_SECURITY_CODE: "server-only-code",
+      API_RATE_LIMIT: { limit },
+      AUTH_FAILURE_LIMIT: { limit },
+      ASSETS: { fetch: assets },
+    };
+    const shell = "capacitor://localhost";
+
+    const options = await worker.fetch(
+      new Request("https://lvxu.test/api/ai/itinerary", {
+        method: "OPTIONS",
+        headers: {
+          origin: shell,
+          "access-control-request-method": "POST",
+          "access-control-request-headers": "authorization,content-type",
+        },
+      }),
+      env as never,
+    );
+    expect(options.status).toBe(204);
+    expect(options.headers.get("access-control-allow-origin")).toBe(shell);
+    expect(options.headers.get("access-control-allow-credentials")).toBe("true");
+    expect(options.headers.get("access-control-allow-origin")).not.toBe("*");
+    expect(limit).not.toHaveBeenCalled();
+
+    const foreign = await worker.fetch(
+      new Request("https://lvxu.test/api/status", {
+        headers: { origin: "https://evil.example" },
+      }),
+      env as never,
+    );
+    expect(foreign.status).toBe(200);
+    expect(foreign.headers.get("access-control-allow-origin")).toBeNull();
+
+    const web = await worker.fetch(
+      new Request("https://lvxu.test/api/auth/check", {
+        headers: { authorization: "Bearer right-key", origin: "https://lvxu.test" },
+      }),
+      env as never,
+    );
+    expect(web.status).toBe(200);
+    expect(web.headers.get("set-cookie")).toContain("SameSite=Strict");
+    expect(web.headers.get("set-cookie")).not.toContain("SameSite=None");
+    expect(web.headers.get("access-control-allow-origin")).toBeNull();
+
+    const shellCheck = await worker.fetch(
+      new Request("https://lvxu.test/api/auth/check", {
+        headers: { authorization: "Bearer right-key", origin: shell },
+      }),
+      env as never,
+    );
+    expect(shellCheck.status).toBe(200);
+    expect(shellCheck.headers.get("set-cookie")).toBeNull();
+    expect(shellCheck.headers.get("access-control-allow-origin")).toBe(shell);
+
+    const proxy = await worker.fetch(
+      new Request("https://lvxu.test/_AMapService/v5/place/text", {
+        headers: { origin: shell },
+      }),
+      env as never,
+    );
+    expect(proxy.status).toBe(401);
+    expect(proxy.headers.get("access-control-allow-origin")).toBe(shell);
+    expect(proxy.headers.get("access-control-allow-credentials")).toBe("true");
   });
 });

@@ -5,7 +5,11 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vitest/config";
-import { renderHeadersFile, securityHeaders } from "./shared/security-headers.ts";
+import {
+  injectContentSecurityPolicy,
+  renderHeadersFile,
+  securityHeaders,
+} from "./shared/security-headers.ts";
 
 export default defineConfig({
   plugins: [
@@ -15,6 +19,9 @@ export default defineConfig({
     {
       name: "lvxu-security-headers",
       apply: "build",
+      transformIndexHtml(html) {
+        return injectContentSecurityPolicy(html);
+      },
       closeBundle() {
         writeFileSync(path.resolve("dist/_headers"), renderHeadersFile());
       },

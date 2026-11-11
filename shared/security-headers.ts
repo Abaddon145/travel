@@ -3,14 +3,16 @@
  * Values are names and policy text only. No secrets.
  */
 
+import { workerOrigin } from "./shell-origin.ts";
+
 export const securityHeaders: Record<string, string> = {
   "content-security-policy": [
     "default-src 'self'",
     "script-src 'self' https://webapi.amap.com https://*.amap.com 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
-    "img-src 'self' data: blob: https://webapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com",
-    "connect-src 'self' https://webapi.amap.com https://restapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com https://geocoding-api.open-meteo.com https://api.open-meteo.com blob:",
+    `img-src 'self' data: blob: https://webapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com ${workerOrigin}`,
+    `connect-src 'self' https://webapi.amap.com https://restapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com https://geocoding-api.open-meteo.com https://api.open-meteo.com blob: ${workerOrigin}`,
     "worker-src 'self' blob:",
     "font-src 'self' data: https://*.amap.com",
     "manifest-src 'self'",
@@ -66,6 +68,20 @@ export function renderHeadersFile() {
     "",
   );
   return lines.join("\n");
+}
+
+export function metaContentSecurityPolicy() {
+  const policy = securityHeaders["content-security-policy"] ?? "";
+  return policy
+    .split("; ")
+    .filter((part) => !part.startsWith("frame-ancestors "))
+    .join("; ");
+}
+
+export function injectContentSecurityPolicy(html: string) {
+  if (html.includes('http-equiv="Content-Security-Policy"')) return html;
+  const meta = `    <meta http-equiv="Content-Security-Policy" content="${metaContentSecurityPolicy()}" />`;
+  return html.replace("<head>", `<head>\n${meta}`);
 }
 
 export function applySecurityHeaders(response: Response) {

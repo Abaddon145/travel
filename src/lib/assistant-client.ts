@@ -2,6 +2,7 @@ import type { AiModel } from "@shared/ai-schema";
 import type { PatchOp } from "@shared/revise-schema";
 import type { PricedUsage } from "@/lib/ai-cost";
 import type { AiFailure } from "@/lib/ai-client";
+import { resolveApiPath } from "@/lib/api-origin";
 import { gatedHeaders } from "@/lib/owner-key";
 
 export type ReviseSuccess = {
@@ -35,13 +36,17 @@ const failures = new Set<string>([
 
 function failureOf(value: unknown): AiFailure | "locked_violation" {
   if (value === "locked_violation") return "locked_violation";
-  return typeof value === "string" && failures.has(value) ? (value as AiFailure) : "network";
+  return typeof value === "string" && failures.has(value)
+    ? (value as AiFailure)
+    : "network";
 }
 
-export async function requestRevision(body: unknown): Promise<ReviseSuccess | ReviseFailure> {
+export async function requestRevision(
+  body: unknown,
+): Promise<ReviseSuccess | ReviseFailure> {
   let response: Response;
   try {
-    response = await fetch("/api/ai/revise", {
+    response = await fetch(resolveApiPath("/api/ai/revise"), {
       method: "POST",
       headers: gatedHeaders("/api/ai/revise", {
         accept: "application/json",
@@ -66,7 +71,8 @@ export async function requestRevision(body: unknown): Promise<ReviseSuccess | Re
       message: typeof payload?.message === "string" ? payload.message : "调整没有完成。",
     };
   }
-  const model: AiModel = payload.usage?.model === "deepseek-v4-pro" ? "deepseek-v4-pro" : "deepseek-flash";
+  const model: AiModel =
+    payload.usage?.model === "deepseek-v4-pro" ? "deepseek-v4-pro" : "deepseek-flash";
   return {
     ok: true,
     message: typeof payload.message === "string" ? payload.message : "可以看看这些调整。",
