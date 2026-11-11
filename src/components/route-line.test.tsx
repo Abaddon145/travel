@@ -193,6 +193,7 @@ describe("地图折线", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "展开地图" }));
     expect(await screen.findByTestId("amap-canvas")).toBeInTheDocument();
+    expect(screen.queryByText(/底图没有加载/)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "核实驾车" }));
     await waitFor(() => {

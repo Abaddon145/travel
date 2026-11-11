@@ -5,6 +5,7 @@ vi.mock("cloudflare:workers", () => ({
   DurableObject: class DurableObject {},
 }));
 
+import { legacyShellOrigin, shellOrigin, workerOrigin } from "../shared/shell-origin";
 import worker from "./index";
 import { sha256Bytes } from "./owner-key";
 
@@ -68,7 +69,7 @@ describe("Worker 入口", () => {
       AUTH_FAILURE_LIMIT: { limit },
       ASSETS: { fetch: assets },
     };
-    const shell = "capacitor://localhost";
+    const shell = shellOrigin;
 
     const options = await worker.fetch(
       new Request("https://lvxu.test/api/ai/itinerary", {
@@ -126,5 +127,26 @@ describe("Worker 入口", () => {
     expect(proxy.status).toBe(401);
     expect(proxy.headers.get("access-control-allow-origin")).toBe(shell);
     expect(proxy.headers.get("access-control-allow-credentials")).toBe("true");
+
+    const legacy = await worker.fetch(
+      new Request("https://lvxu.test/api/auth/check", {
+        headers: { authorization: "Bearer right-key", origin: legacyShellOrigin },
+      }),
+      env as never,
+    );
+    expect(legacy.status).toBe(200);
+    expect(legacy.headers.get("set-cookie")).toBeNull();
+    expect(legacy.headers.get("access-control-allow-origin")).toBe(legacyShellOrigin);
+    expect(legacy.headers.get("access-control-allow-origin")).not.toBe("*");
+
+    const site = await worker.fetch(
+      new Request(`${workerOrigin}/api/auth/check`, {
+        headers: { authorization: "Bearer right-key", origin: workerOrigin },
+      }),
+      env as never,
+    );
+    expect(site.status).toBe(200);
+    expect(site.headers.get("set-cookie")).toContain("SameSite=Strict");
+    expect(site.headers.get("access-control-allow-origin")).toBeNull();
   });
 });
