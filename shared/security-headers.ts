@@ -10,7 +10,7 @@ export const securityHeaders: Record<string, string> = {
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob: https://webapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com",
-    "connect-src 'self' https://webapi.amap.com https://restapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com blob:",
+    "connect-src 'self' https://webapi.amap.com https://restapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com https://geocoding-api.open-meteo.com https://api.open-meteo.com blob:",
     "worker-src 'self' blob:",
     "font-src 'self' data: https://*.amap.com",
     "manifest-src 'self'",
@@ -47,7 +47,24 @@ export function renderHeadersFile() {
   for (const [name, value] of Object.entries(securityHeaders)) {
     lines.push(`  ${canonicalNames[name]}: ${value}`);
   }
-  lines.push("");
+  lines.push(
+    "",
+    "/assets/*",
+    "  Cache-Control: public, max-age=31536000, immutable",
+    "",
+    "/index.html",
+    "  Cache-Control: public, max-age=0, must-revalidate",
+    "",
+    "/",
+    "  Cache-Control: public, max-age=0, must-revalidate",
+    "",
+    "/sw.js",
+    "  Cache-Control: public, max-age=0, must-revalidate",
+    "",
+    "/manifest.webmanifest",
+    "  Cache-Control: public, max-age=0, must-revalidate",
+    "",
+  );
   return lines.join("\n");
 }
 

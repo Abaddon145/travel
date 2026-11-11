@@ -5,7 +5,7 @@ test.beforeEach(async ({ page }) => {
   await blockPaidUpstream(page);
 });
 
-test("外壳使用 100dvh，长页面在内部滚动", async ({ page }) => {
+test("长页面跟着文档滚动，底部标签保持固定", async ({ page }) => {
   await page.goto("/profile");
   await expect(page.getByRole("heading", { name: "我的" })).toBeVisible();
   const shell = page.locator("[data-app-shell]");
@@ -13,16 +13,13 @@ test("外壳使用 100dvh，长页面在内部滚动", async ({ page }) => {
     shell: element.getBoundingClientRect().height,
     viewport: window.innerHeight,
   }));
-  expect(Math.abs(height.shell - height.viewport)).toBeLessThanOrEqual(1);
+  expect(height.shell).toBeGreaterThanOrEqual(height.viewport - 1);
 
-  const scroller = page.locator("[data-app-scroll]");
   const tab = page.getByRole("navigation", { name: "主导航" });
   const before = await tab.boundingBox();
-  await scroller.evaluate((element) => {
-    element.scrollTop = element.scrollHeight;
-  });
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
   const after = await tab.boundingBox();
-  expect(await scroller.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThanOrEqual(1);
   expect((after?.y ?? 0) + (after?.height ?? 0)).toBeLessThanOrEqual(height.viewport + 1);
 });
@@ -53,6 +50,7 @@ test("安全区、16px 输入和独立窗口样式都在", async ({ page }) => {
   expect(titleSize).toBeGreaterThanOrEqual(16);
 
   await page.goto("/trips/trip-kyoto");
+  await page.getByRole("button", { name: "编辑抵达白川" }).click();
   const timeSize = await page.getByLabel("抵达白川锁定开始").evaluate((element) => {
     return Number.parseFloat(getComputedStyle(element).fontSize);
   });
@@ -99,7 +97,5 @@ test("主屏幕样式分支关闭文档回弹", async ({ page }) => {
     };
   });
   expect(metrics.overscroll).toBe("none");
-  expect(
-    Math.abs(Number.parseFloat(metrics.height) - metrics.viewport),
-  ).toBeLessThanOrEqual(1);
+  expect(Number.parseFloat(metrics.height)).toBeGreaterThanOrEqual(metrics.viewport - 1);
 });

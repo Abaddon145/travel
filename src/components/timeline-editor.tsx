@@ -6,6 +6,12 @@ import { ItemFormDrawer } from "@/components/item-form-drawer";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { TripTimeline } from "@/components/trip-timeline";
 import { Button } from "@/components/ui/button";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { db } from "@/db/database";
 import {
   deleteDay,
@@ -16,10 +22,7 @@ import {
   setTimelineLock,
 } from "@/db/repository";
 import type { DayView, TimelineEntry, TripDetail } from "@/domain/types";
-import { notifyError, notifySuccess, notifyUndo } from "@/lib/feedback";
-
-const timeFieldClass =
-  "h-11 rounded-lg border bg-background px-2 text-base text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50";
+import { notifyError, notifyUndo } from "@/lib/feedback";
 
 type ConfirmState =
   { kind: "day"; day: DayView } | { kind: "item"; item: TimelineEntry } | null;
@@ -37,6 +40,7 @@ export function TimelineEditor({
   const [editingDay, setEditingDay] = useState<DayView | null>(null);
   const [itemDayId, setItemDayId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<TimelineEntry | null>(null);
+  const [activeItem, setActiveItem] = useState<TimelineEntry | null>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
 
   const removeDay = useMutation({
@@ -54,6 +58,7 @@ export function TimelineEditor({
     mutationFn: (itemId: string) => deleteTimelineItem(db, itemId),
     onSuccess: (versionId) => {
       setConfirm(null);
+      setActiveItem(null);
       if (versionId) {
         notifyUndo("已删除", () => restoreVersion(db, versionId));
       }
@@ -64,18 +69,21 @@ export function TimelineEditor({
   const move = useMutation({
     mutationFn: (input: { id: string; direction: "up" | "down" }) =>
       moveTimelineItem(db, input.id, input.direction),
-    onSuccess: (moved) => {
-      if (moved) notifySuccess("顺序已更新");
-    },
     onError: (error) => notifyError(error),
   });
 
   const lock = useMutation({
     mutationFn: (input: { id: string; locked: boolean }) =>
       setTimelineLock(db, input.id, input.locked),
-    onSuccess: (_result, input) => notifySuccess(input.locked ? "已锁定" : "已解锁"),
+    onSuccess: (_result, input) => {
+      setActiveItem((current) => (current ? { ...current, locked: input.locked } : current));
+    },
     onError: (error) => notifyError(error),
   });
+
+  const current = activeItem
+    ? (detail.days.flatMap((day) => day.items).find((item) => item.id === activeItem.id) ?? null)
+    : null;
 
   return (
     <>
@@ -99,41 +107,11 @@ export function TimelineEditor({
           days={detail.days}
           selectedId={selectedId}
           onSelect={onSelect}
+          onOpen={setActiveItem}
+          onDelete={(item) => {
+            if (!item.locked) setConfirm({ kind: "item", item });
+          }}
           onReorder={(item, direction) => move.mutate({ id: item.id, direction })}
-          renderDayFooter={(day) => (
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-                锁定自
-                <input
-                  type="time"
-                  className={timeFieldClass}
-                  value={day.lockedFrom ?? ""}
-                  aria-label={`${day.title}锁定开始`}
-                  onChange={(event) =>
-                    void setDayLock(db, day.id, day.locked === true, {
-                      from: event.target.value,
-                      to: day.lockedTo ?? "",
-                    })
-                  }
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-xs text-muted-foreground">
-                锁定至
-                <input
-                  type="time"
-                  className={timeFieldClass}
-                  value={day.lockedTo ?? ""}
-                  aria-label={`${day.title}锁定结束`}
-                  onChange={(event) =>
-                    void setDayLock(db, day.id, day.locked === true, {
-                      from: day.lockedFrom ?? "",
-                      to: event.target.value,
-                    })
-                  }
-                />
-              </label>
-            </div>
-          )}
           renderDayActions={(day) => {
             const blocked = day.items.some((item) => item.locked);
             return (
@@ -146,11 +124,7 @@ export function TimelineEditor({
                   aria-label={day.locked ? `解锁${day.title}` : `锁定${day.title}`}
                   onClick={() => void setDayLock(db, day.id, day.locked !== true)}
                 >
-                  {day.locked ? (
-                    <Lock aria-hidden="true" />
-                  ) : (
-                    <LockOpen aria-hidden="true" />
-                  )}
+                  {day.locked ? <Lock aria-hidden="true" /> : <LockOpen aria-hidden="true" />}
                 </Button>
                 <Button
                   type="button"
@@ -189,80 +163,31 @@ export function TimelineEditor({
               </>
             );
           }}
-          renderItemActions={(item) => {
-            const day = detail.days.find((entry) =>
-              entry.items.some((row) => row.id === item.id),
-            );
-            const index = day?.items.findIndex((row) => row.id === item.id) ?? -1;
-            const previous = index > 0 ? day?.items[index - 1] : undefined;
-            const next = day && index >= 0 ? day.items[index + 1] : undefined;
-            const upDisabled = item.locked || !previous || previous.locked;
-            const downDisabled = item.locked || !next || next.locked;
-            return (
-              <div className="flex flex-wrap gap-1">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label={`上移${item.name}`}
-                  disabled={upDisabled || move.isPending}
-                  onClick={() => move.mutate({ id: item.id, direction: "up" })}
-                >
-                  <ArrowUp aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label={`下移${item.name}`}
-                  disabled={downDisabled || move.isPending}
-                  onClick={() => move.mutate({ id: item.id, direction: "down" })}
-                >
-                  <ArrowDown aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  variant={item.locked ? "secondary" : "outline"}
-                  size="icon"
-                  aria-pressed={item.locked}
-                  aria-label={item.locked ? `解锁${item.name}` : `锁定${item.name}`}
-                  onClick={() => lock.mutate({ id: item.id, locked: !item.locked })}
-                >
-                  {item.locked ? (
-                    <Lock aria-hidden="true" />
-                  ) : (
-                    <LockOpen aria-hidden="true" />
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label={`编辑${item.name}`}
-                  disabled={item.locked}
-                  onClick={() => {
-                    if (!day) return;
-                    setEditingItem(item);
-                    setItemDayId(day.id);
-                  }}
-                >
-                  <Pencil aria-hidden="true" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  aria-label={`删除${item.name}`}
-                  disabled={item.locked}
-                  onClick={() => setConfirm({ kind: "item", item })}
-                >
-                  <Trash2 aria-hidden="true" />
-                </Button>
-              </div>
-            );
-          }}
         />
       )}
+      <ItemActions
+        detail={detail}
+        item={current}
+        pending={move.isPending}
+        onClose={() => setActiveItem(null)}
+        onMove={(direction) => {
+          if (current) move.mutate({ id: current.id, direction });
+        }}
+        onLock={() => {
+          if (current) lock.mutate({ id: current.id, locked: !current.locked });
+        }}
+        onEdit={() => {
+          if (!current) return;
+          const day = detail.days.find((entry) => entry.items.some((row) => row.id === current.id));
+          if (!day) return;
+          setEditingItem(current);
+          setItemDayId(day.id);
+          setActiveItem(null);
+        }}
+        onDelete={() => {
+          if (current) setConfirm({ kind: "item", item: current });
+        }}
+      />
       <DayFormDrawer
         open={dayOpen}
         onOpenChange={setDayOpen}
@@ -301,5 +226,74 @@ export function TimelineEditor({
         }}
       />
     </>
+  );
+}
+
+function ItemActions({
+  detail,
+  item,
+  pending,
+  onClose,
+  onMove,
+  onLock,
+  onEdit,
+  onDelete,
+}: {
+  detail: TripDetail;
+  item: TimelineEntry | null;
+  pending: boolean;
+  onClose: () => void;
+  onMove: (direction: "up" | "down") => void;
+  onLock: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const day = item
+    ? detail.days.find((entry) => entry.items.some((row) => row.id === item.id))
+    : undefined;
+  const index = day?.items.findIndex((row) => row.id === item?.id) ?? -1;
+  const previous = index > 0 ? day?.items[index - 1] : undefined;
+  const next = day && index >= 0 ? day.items[index + 1] : undefined;
+  const upDisabled = !item || item.locked || !previous || previous.locked;
+  const downDisabled = !item || item.locked || !next || next.locked;
+
+  return (
+    <Drawer open={Boolean(item)} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DrawerContent>
+        <div className="flex items-center gap-2 px-4 pt-2">
+          <DrawerTitle className="min-w-0 flex-1 truncate">{item?.name ?? "项目"}</DrawerTitle>
+          <Button type="button" variant="ghost" className="h-11" onClick={onClose}>
+            关闭
+          </Button>
+        </div>
+        <DrawerDescription className="px-4 pt-2">
+          左滑这项可以删除，长按后上下拖动可以排序。下面的按钮做同样的事。
+        </DrawerDescription>
+        {item ? (
+          <div className="flex flex-col gap-2 overflow-y-auto px-4 py-4 pb-safe">
+            <Button type="button" variant="outline" className="h-11 justify-start" aria-label={`上移${item.name}`} disabled={upDisabled || pending} onClick={() => onMove("up")}>
+              <ArrowUp aria-hidden="true" data-icon="inline-start" />
+              上移
+            </Button>
+            <Button type="button" variant="outline" className="h-11 justify-start" aria-label={`下移${item.name}`} disabled={downDisabled || pending} onClick={() => onMove("down")}>
+              <ArrowDown aria-hidden="true" data-icon="inline-start" />
+              下移
+            </Button>
+            <Button type="button" variant={item.locked ? "secondary" : "outline"} className="h-11 justify-start" aria-pressed={item.locked} aria-label={item.locked ? `解锁${item.name}` : `锁定${item.name}`} onClick={onLock}>
+              {item.locked ? <Lock aria-hidden="true" data-icon="inline-start" /> : <LockOpen aria-hidden="true" data-icon="inline-start" />}
+              {item.locked ? "解锁" : "锁定"}
+            </Button>
+            <Button type="button" variant="outline" className="h-11 justify-start" aria-label={`编辑${item.name}`} disabled={item.locked} onClick={onEdit}>
+              <Pencil aria-hidden="true" data-icon="inline-start" />
+              编辑
+            </Button>
+            <Button type="button" variant="outline" className="h-11 justify-start" aria-label={`删除${item.name}`} disabled={item.locked} onClick={onDelete}>
+              <Trash2 aria-hidden="true" data-icon="inline-start" />
+              删除
+            </Button>
+          </div>
+        ) : null}
+      </DrawerContent>
+    </Drawer>
   );
 }

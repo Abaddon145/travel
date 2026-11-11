@@ -110,25 +110,31 @@ afterEach(async () => {
 });
 
 const points = [
-  { id: "a", lng: 120.1, lat: 30.2, label: "白堤" },
-  { id: "b", lng: 120.16, lat: 30.26, label: "湖滨" },
+  { id: "a", lng: 120.1, lat: 30.2, label: "白堤", color: "#8c4a32", badge: "1", selected: false },
+  { id: "b", lng: 120.16, lat: 30.26, label: "湖滨", color: "#8c4a32", badge: "2", selected: false },
 ];
 
 describe("地图折线", () => {
   it("选中折线时贴合路线，没有选中时回到总览", async () => {
-    const view = render(<AmapCanvas apiKey="js-key" points={points} polyline="" onSelect={vi.fn()} />);
+    const view = render(<AmapCanvas apiKey="js-key" points={points} lines={[]} onSelect={vi.fn()} />);
     await waitFor(() => {
       expect(recorded.fits.at(-1)?.overlays).toHaveLength(2);
       expect(recorded.fits.at(-1)?.padding).toEqual(overviewFitPadding);
     });
     view.rerender(
-      <AmapCanvas apiKey="js-key" points={points} polyline="120.10,30.20;120.12,30.22" onSelect={vi.fn()} />,
+      <AmapCanvas
+        apiKey="js-key"
+        points={points}
+        lines={[{ id: "leg", polyline: "120.10,30.20;120.12,30.22", color: "#8c4a32" }]}
+        onSelect={vi.fn()}
+      />,
     );
     await waitFor(() => {
-      expect(recorded.fits.at(-1)?.overlays).toEqual([recorded.lines.at(-1)]);
+      expect(recorded.fits.at(-1)?.overlays).toHaveLength(3);
+      expect(recorded.fits.at(-1)?.overlays.at(-1)).toBe(recorded.lines.at(-1));
       expect(recorded.fits.at(-1)?.padding).toEqual(routeFitPadding);
     });
-    view.rerender(<AmapCanvas apiKey="js-key" points={points} polyline="" onSelect={vi.fn()} />);
+    view.rerender(<AmapCanvas apiKey="js-key" points={points} lines={[]} onSelect={vi.fn()} />);
     await waitFor(() => {
       expect(recorded.fits.at(-1)?.overlays).toHaveLength(2);
       expect(recorded.fits.at(-1)?.padding).toEqual(overviewFitPadding);
@@ -179,7 +185,7 @@ describe("地图折线", () => {
       <MapPanel
         tripId="trip-line"
         destination="杭州"
-        items={[stop("from", "白堤", 120.1), stop("to", "湖滨小馆", 120.16)]}
+        days={[{ id: "day-1", title: "西湖", date: "2026-11-21", items: [stop("from", "白堤", 120.1), stop("to", "湖滨小馆", 120.16)] }]}
         selectedId="from"
         onSelect={vi.fn()}
       />,
@@ -203,7 +209,8 @@ describe("地图折线", () => {
       strokeWeight: 6,
       zIndex: 120,
     });
-    expect(recorded.fits.at(-1)?.overlays).toEqual([driving]);
+    expect(recorded.fits.at(-1)?.overlays).toContain(driving);
+    expect(recorded.fits.at(-1)?.overlays?.length).toBeGreaterThan(1);
     expect(recorded.fits.at(-1)?.padding).toEqual(routeFitPadding);
 
     await userEvent.click(screen.getByRole("button", { name: "核实步行" }));

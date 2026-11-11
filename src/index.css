@@ -177,7 +177,7 @@
   html,
   body,
   [data-app-shell] {
-    height: 100dvh;
+    min-height: 100dvh;
     overscroll-behavior: none;
   }
 }
@@ -185,8 +185,35 @@
 html[data-display="standalone"],
 html[data-display="standalone"] body,
 html[data-display="standalone"] [data-app-shell] {
-  height: 100dvh;
+  min-height: 100dvh;
   overscroll-behavior: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .lvxu-pin.is-selected {
+    animation: lvxu-pin 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+}
+
+.lvxu-pin.is-selected {
+  outline: 2px solid #fffaf6;
+  outline-offset: 1px;
+}
+
+[data-testid="timeline-name"],
+[data-testid="timeline-item"] {
+  scroll-margin-top: calc(var(--page-header-height, 7rem) + 0.75rem);
+  scroll-margin-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+@keyframes lvxu-pin {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-7px);
+  }
 }
 
 @media print {

@@ -22,7 +22,8 @@ test("核对地点并只显示高德返回的距离", async ({ page }) => {
   });
 
   await page.goto("/trips/trip-kyoto");
-  await expect(page.getByText("未核实").first()).toBeVisible();
+  await expect(page.getByTestId("map-summary")).toContainText("已核对");
+  await expect(page.getByRole("button", { name: "核对地点" })).toHaveCount(0);
   await page.screenshot({ path: `${directory}/unverified.png` });
 
   await page.getByRole("button", { name: "展开地图" }).click();
@@ -72,12 +73,14 @@ test("核对地点并只显示高德返回的距离", async ({ page }) => {
   await page.route("https://webapi.amap.com/**", (route) => route.abort());
   await page.route("https://restapi.amap.com/**", (route) => route.abort());
 
-  const firstStop = page.locator("li").filter({ hasText: "1. 白川庵" });
-  const secondStop = page.locator("li").filter({ hasText: "2. 三年坂" });
+  const firstStop = page.locator("li").filter({ hasText: "1. 白川庵" }).first();
+  const secondStop = page.locator("li").filter({ hasText: "2. 三年坂" }).first();
+  await firstStop.getByRole("button", { name: /白川庵/ }).click();
   await firstStop.getByRole("button", { name: "核对地点" }).click();
   await expect(page.getByRole("button", { name: /东山区清水/ })).toBeVisible();
   await page.screenshot({ path: `${directory}/candidates.png` });
   await page.getByRole("button", { name: /东山区清水/ }).click();
+  await secondStop.getByRole("button", { name: /三年坂/ }).click();
   await secondStop.getByRole("button", { name: "核对地点" }).click();
   await page.getByRole("button", { name: /东山区清水/ }).click();
   await expect(page.getByText("已核对").first()).toBeVisible();

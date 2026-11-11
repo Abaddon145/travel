@@ -38,6 +38,7 @@ describe("行程页面", () => {
   it("锁定后不能编辑、移动或删除", async () => {
     const user = userEvent.setup();
     await renderRoute("/trips/trip-kyoto");
+    await user.click(await screen.findByRole("button", { name: "清水寺" }));
     await user.click(await screen.findByRole("button", { name: "锁定清水寺" }));
     expect(await screen.findByRole("button", { name: "解锁清水寺" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "编辑清水寺" })).toBeDisabled();

@@ -22,6 +22,7 @@ import { deleteLedgerEntry, restoreLedgerEntry } from "@/db/tools";
 import {
   budgetReport,
   categoryLabel,
+  isOverBudget,
   currencyLabel,
   explainVariance,
   formatMinor,
@@ -89,6 +90,8 @@ function BudgetBody({
   const report = reports.find((item) => item.currency === active) ?? reports[0];
   if (!report) return null;
   const visible = entries.filter((entry) => entry.currency === active);
+  const totalRecorded = report.total.openCount !== report.total.entryCount;
+  const totalOver = totalRecorded && isOverBudget(report.total.plannedMinor, report.total.actualMinor);
 
   return (
     <>
@@ -119,8 +122,15 @@ function BudgetBody({
             </p>
           </div>
           <div className="flex flex-col gap-1">
-            <p className="text-xs text-primary">实际</p>
-            <p className="text-2xl font-medium leading-none text-primary">
+            <p className={totalOver ? "text-xs text-primary" : "text-xs text-muted-foreground"}>实际</p>
+            <p
+              data-over={totalOver ? "true" : "false"}
+              className={
+                totalOver
+                  ? "text-2xl font-medium leading-none text-primary"
+                  : "text-2xl font-medium leading-none"
+              }
+            >
               <MoneyFigure minor={report.total.actualMinor} currency={active} quiet={quiet} />
             </p>
           </div>
@@ -138,7 +148,13 @@ function BudgetBody({
               <span className="text-sm">{dayLabel(day.date, trip.days)}</span>
               <span className="text-xs text-muted-foreground tabular-nums">
                 预计 {formatMinor(day.plannedMinor, active)}
-                <span className="text-primary">
+                <span
+                  className={
+                    day.openCount !== day.entryCount && isOverBudget(day.plannedMinor, day.actualMinor)
+                      ? "text-primary"
+                      : undefined
+                  }
+                >
                   {" "}
                   · 实际{" "}
                   {day.openCount === day.entryCount
@@ -165,10 +181,13 @@ function BudgetBody({
                   </div>
                   <p className="mt-2 text-sm">{entry.title}</p>
                   <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                    预计 {formatMinor(entry.plannedMinor, entry.currency)} · 实际{" "}
-                    {entry.actualMinor === null
-                      ? "未记"
-                      : formatMinor(entry.actualMinor, entry.currency)}
+                    预计 {formatMinor(entry.plannedMinor, entry.currency)} ·{" "}
+                    <span className={isOverBudget(entry.plannedMinor, entry.actualMinor) ? "text-primary" : undefined}>
+                      实际{" "}
+                      {entry.actualMinor === null
+                        ? "未记"
+                        : formatMinor(entry.actualMinor, entry.currency)}
+                    </span>
                   </p>
                   {entry.note ? (
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">{entry.note}</p>

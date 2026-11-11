@@ -184,6 +184,10 @@ function absorb(bucket: MoneyBucket, entry: LedgerAmounts) {
   return next;
 }
 
+export function isOverBudget(plannedMinor: number, actualMinor: number | null) {
+  return actualMinor !== null && actualMinor > plannedMinor;
+}
+
 export function explainVariance(bucket: MoneyBucket, currency: CurrencyCode) {
   if (bucket.entryCount === 0) return "还没有金额";
   if (bucket.openCount === bucket.entryCount) {

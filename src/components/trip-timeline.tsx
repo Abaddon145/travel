@@ -1,23 +1,28 @@
-import type { ReactNode } from "react";
+import { useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { BedDouble, Lock, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { DayView, TimelineEntry } from "@/domain/types";
+import { dragReorder, swipeDelete } from "@/lib/gestures";
+import { tapFeedback } from "@/lib/haptics";
 import { formatDateWithWeekday } from "@/lib/dates";
+import { cn } from "@/lib/utils";
 
 export function TripTimeline({
   days,
   renderDayActions,
   renderDayFooter,
-  renderItemActions,
   onReorder,
+  onOpen,
+  onDelete,
   selectedId,
   onSelect,
 }: {
   days: DayView[];
   renderDayActions?: (day: DayView) => ReactNode;
   renderDayFooter?: (day: DayView) => ReactNode;
-  renderItemActions?: (item: TimelineEntry) => ReactNode;
   onReorder?: (item: TimelineEntry, direction: "up" | "down") => void;
+  onOpen?: (item: TimelineEntry) => void;
+  onDelete?: (item: TimelineEntry) => void;
   selectedId?: string | null;
   onSelect?: (id: string) => void;
 }) {
@@ -57,8 +62,9 @@ export function TripTimeline({
               <TimelineRow
                 key={item.id}
                 item={item}
-                actions={renderItemActions?.(item)}
                 onReorder={onReorder}
+                onOpen={onOpen}
+                onDelete={onDelete}
                 selected={selectedId === item.id}
                 onSelect={onSelect}
               />
@@ -72,24 +78,95 @@ export function TripTimeline({
 
 function TimelineRow({
   item,
-  actions,
   onReorder,
+  onOpen,
+  onDelete,
   selected,
   onSelect,
 }: {
   item: TimelineEntry;
-  actions?: ReactNode;
   onReorder?: (item: TimelineEntry, direction: "up" | "down") => void;
+  onOpen?: (item: TimelineEntry) => void;
+  onDelete?: (item: TimelineEntry) => void;
   selected?: boolean;
   onSelect?: (id: string) => void;
 }) {
   const Icon = item.kind === "place" ? MapPin : BedDouble;
+  const start = useRef<{ x: number; y: number; dragging: boolean; moved: number } | null>(null);
+  const [offset, setOffset] = useState(0);
+  const suppress = useRef(false);
+  const timer = useRef<number | null>(null);
+
+  function clearTimer() {
+    if (timer.current !== null) {
+      window.clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }
+
+  function down(event: PointerEvent<HTMLLIElement>) {
+    if (item.locked || event.button !== 0) return;
+    start.current = { x: event.clientX, y: event.clientY, dragging: false, moved: 0 };
+    clearTimer();
+    timer.current = window.setTimeout(() => {
+      if (!start.current || !onReorder) return;
+      start.current.dragging = true;
+      tapFeedback();
+    }, 450);
+  }
+
+  function move(event: PointerEvent<HTMLLIElement>) {
+    const origin = start.current;
+    if (!origin) return;
+    const dx = event.clientX - origin.x;
+    const dy = event.clientY - origin.y;
+    if (!origin.dragging && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) clearTimer();
+    if (origin.dragging && onReorder) {
+      const direction = dragReorder(dy - origin.moved);
+      if (direction) {
+        origin.moved += direction === "up" ? -36 : 36;
+        origin.y = event.clientY;
+        origin.moved = 0;
+        onReorder(item, direction);
+      }
+      return;
+    }
+    if (dx < -8 && Math.abs(dx) > Math.abs(dy)) setOffset(Math.max(dx, -96));
+  }
+
+  function up(event: PointerEvent<HTMLLIElement>) {
+    const origin = start.current;
+    clearTimer();
+    start.current = null;
+    setOffset(0);
+    if (!origin) return;
+    if (origin.dragging) {
+      suppress.current = true;
+      return;
+    }
+    const dx = event.clientX - origin.x;
+    const dy = event.clientY - origin.y;
+    if (onDelete && swipeDelete(dx, dy)) {
+      suppress.current = true;
+      tapFeedback();
+      onDelete(item);
+    }
+  }
+
   return (
     <li
-      className="relative flex flex-col gap-2 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+      className={cn(
+        "relative flex flex-col gap-2 rounded-lg px-2 py-1 outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+        selected && "bg-primary/10",
+      )}
       data-testid="timeline-item"
       tabIndex={onReorder ? 0 : undefined}
       aria-keyshortcuts={onReorder ? "ArrowUp ArrowDown" : undefined}
+      style={{ transform: offset ? `translateX(${offset}px)` : undefined }}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
       onKeyDown={(event) => {
         if (!onReorder) return;
         if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
@@ -99,7 +176,7 @@ function TimelineRow({
     >
       <span
         aria-hidden="true"
-        className="absolute top-2 -left-[1.3rem] size-2 rounded-full bg-primary"
+        className="absolute top-4 -left-[1.3rem] size-2 rounded-full bg-primary"
       />
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground tabular-nums">
@@ -117,14 +194,24 @@ function TimelineRow({
         ) : null}
       </div>
       <div className="flex flex-col gap-1">
-        {onSelect ? (
+        {onSelect || onOpen ? (
           <button
             type="button"
             id={`timeline-${item.id}`}
             data-testid="timeline-name"
-            className={`rounded-sm text-left text-base font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${selected ? "text-primary" : ""}`}
+            className={cn(
+              "flex min-h-11 items-center rounded-sm text-left text-base font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
+              selected && "text-primary",
+            )}
             aria-current={selected ? "true" : undefined}
-            onClick={() => onSelect(item.id)}
+            onClick={() => {
+              if (suppress.current) {
+                suppress.current = false;
+                return;
+              }
+              onSelect?.(item.id);
+              onOpen?.(item);
+            }}
           >
             {item.name}
           </button>
@@ -138,7 +225,6 @@ function TimelineRow({
           {item.note ? ` · ${item.note}` : ""}
         </p>
       </div>
-      {actions}
     </li>
   );
 }

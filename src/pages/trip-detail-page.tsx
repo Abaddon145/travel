@@ -1,23 +1,26 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { History, Pencil, Sparkles, Trash2 } from "lucide-react";
+import { Compass, History, Pencil, Sparkles, Trash2 } from "lucide-react";
 import { useNavigate, useParams } from "react-router";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { MissingState } from "@/components/missing-state";
 import { PageHeader } from "@/components/page-header";
 import { TripSectionNav } from "@/components/trip-section-nav";
-import { AssistantSheet } from "@/components/assistant-sheet";
 import { MapPanel } from "@/components/map-panel";
 import { TimelineEditor } from "@/components/timeline-editor";
 import { TripFormDrawer } from "@/components/trip-form-drawer";
 import { VersionDrawer } from "@/components/version-drawer";
 import { Button } from "@/components/ui/button";
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/db/database";
 import { deleteTrip, restoreDeletedTrip } from "@/db/repository";
 import { useTripDetail } from "@/hooks/use-travel-data";
 import { formatDateRange } from "@/lib/dates";
 import { notifyError, notifyUndo } from "@/lib/feedback";
+
+const AssistantSheet = lazy(() =>
+  import("@/components/assistant-sheet").then((module) => ({ default: module.AssistantSheet })),
+);
 
 export function TripDetailPage() {
   const { tripId = "" } = useParams();
@@ -63,12 +66,11 @@ export function TripDetailPage() {
       <>
         <PageHeader title="找不到行程" eyebrow="旅序" backTo="/" />
         <section className="px-4 py-6">
-          <Empty>
-            <EmptyHeader>
-              <EmptyTitle>这趟行程不存在</EmptyTitle>
-              <EmptyDescription>返回列表，选择另一段旅程。</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
+          <MissingState
+            icon={<Compass />}
+            title="这趟行程不存在"
+            description="它可能已经删除，或这个地址写错了。列表里还有留在这台设备上的行程。"
+          />
         </section>
       </>
     );
@@ -132,18 +134,22 @@ export function TripDetailPage() {
         <MapPanel
           tripId={trip.id}
           destination={trip.destination}
-          items={trip.days.flatMap((day) => day.items)}
+          days={trip.days}
           selectedId={selectedId}
           onSelect={setSelectedId}
         />
         <TimelineEditor detail={trip} selectedId={selectedId} onSelect={setSelectedId} />
       </section>
-      <AssistantSheet
-        open={assistantOpen}
-        onOpenChange={setAssistantOpen}
-        detail={trip}
-        selectedId={selectedId}
-      />
+      {assistantOpen ? (
+        <Suspense fallback={null}>
+          <AssistantSheet
+            open={assistantOpen}
+            onOpenChange={setAssistantOpen}
+            detail={trip}
+            selectedId={selectedId}
+          />
+        </Suspense>
+      ) : null}
       <TripFormDrawer open={editing} onOpenChange={setEditing} trip={trip} />
       <VersionDrawer
         open={versionsOpen}

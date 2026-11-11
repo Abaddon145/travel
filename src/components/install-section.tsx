@@ -13,7 +13,7 @@ export function InstallSection() {
         <dt className="text-muted-foreground">主题色</dt>
         <dd>浅色纸色，深色随系统</dd>
         <dt className="text-muted-foreground">图标</dt>
-        <dd>180、192 与 512，含可遮罩图标</dd>
+        <dd>主屏幕图标，含可遮罩样式</dd>
         <dt className="text-muted-foreground">启动画面</dt>
         <dd>纸色底，居中行程标记。深色随系统。</dd>
       </dl>

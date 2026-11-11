@@ -3,11 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MapPanel } from "@/components/map-panel";
 import { db } from "@/db/database";
-import { saveMapRoute } from "@/db/repository";
+import { saveMapRoute, saveRoutePick } from "@/db/repository";
 import type { TimelineEntry } from "@/domain/types";
 
 vi.mock("@/components/amap-canvas", () => ({
-  AmapCanvas: ({ polyline }: { polyline: string }) => <div data-testid="map-polyline">{polyline}</div>,
+  AmapCanvas: ({ lines }: { lines: { polyline: string }[] }) => (
+    <div data-testid="map-polyline">{lines.map((line) => line.polyline).join("|")}</div>
+  ),
 }));
 
 const item: TimelineEntry = {
@@ -26,9 +28,14 @@ const item: TimelineEntry = {
 
 afterEach(async () => {
   vi.unstubAllGlobals();
+  sessionStorage.clear();
   await db.mapRoutes.clear();
   await db.routePicks.clear();
 });
+
+function asDays(items: TimelineEntry[], id = "day-1") {
+  return [{ id, title: "第一天", date: "2026-11-12", items }];
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -66,12 +73,13 @@ describe("地图面板", () => {
       <MapPanel
         tripId="trip-1"
         destination="京都"
-        items={[item]}
+        days={asDays([item])}
         selectedId={null}
         onSelect={vi.fn()}
       />,
     );
-    expect(screen.getByText(/未核实/)).toBeInTheDocument();
+    expect(screen.getByTestId("map-summary")).toHaveTextContent("1 个地点 · 0 已核对");
+    expect(screen.queryByRole("button", { name: "核对地点" })).not.toBeInTheDocument();
     expect(screen.queryByText(/米/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "展开地图" }));
     expect(await screen.findByText("高德密钥还没配置。")).toBeInTheDocument();
@@ -104,7 +112,7 @@ describe("地图面板", () => {
       <MapPanel
         tripId="trip-modes"
         destination="杭州"
-        items={[stop("from", "白堤", 120.1), stop("to", "湖滨小馆", 120.2)]}
+        days={asDays([stop("from", "白堤", 120.1), stop("to", "湖滨小馆", 120.2)])}
         selectedId="from"
         onSelect={vi.fn()}
       />,
@@ -170,11 +178,12 @@ describe("地图面板", () => {
     const props = {
       tripId: "trip-pick",
       destination: "杭州",
-      items: [stop("from", "白堤", 120.1), stop("to", "湖滨小馆", 120.16)],
+      days: asDays([stop("from", "白堤", 120.1), stop("to", "湖滨小馆", 120.16)]),
       selectedId: "from",
       onSelect: vi.fn(),
     };
     const view = render(<MapPanel {...props} />);
+    await userEvent.click(screen.getByRole("button", { name: "展开地图" }));
     expect(await screen.findByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toHaveAttribute("aria-pressed", "true");
     await userEvent.click(screen.getByRole("button", { name: "步行 2218 米 · 30 分钟" }));
     expect(await screen.findByRole("button", { name: "步行 2218 米 · 30 分钟" })).toHaveAttribute("aria-pressed", "true");
@@ -183,5 +192,63 @@ describe("地图面板", () => {
     expect(await screen.findByRole("button", { name: "步行 2218 米 · 30 分钟" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "驾车 2629 米 · 8 分钟" })).toHaveAttribute("aria-pressed", "false");
     expect(await db.routePicks.get("from:to")).toMatchObject({ mode: "walking" });
+  });
+
+  it("按天编号，并且不给跨天路段核实按钮", async () => {
+    render(
+      <MapPanel
+        tripId="trip-days"
+        destination="京都"
+        days={[
+          { id: "day-a", title: "抵达", date: "2026-11-12", items: [stop("a", "白川庵", 135.7)] },
+          { id: "day-b", title: "东山", date: "2026-11-13", items: [stop("b", "清水寺", 135.8)] },
+        ]}
+        selectedId="a"
+        onSelect={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "展开地图" }));
+    expect(screen.getByRole("button", { name: /1\. 白川庵/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /1\. 清水寺/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "核实步行" })).not.toBeInTheDocument();
+  });
+
+  it("重新打开后重画已保存的路线", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ key: "js-key", serviceHost: "/_AMapService", version: "2.0" })),
+    );
+    await saveMapRoute(db, {
+      id: "from:to:walking",
+      tripId: "trip-redraw",
+      fromItemId: "from",
+      toItemId: "to",
+      mode: "walking",
+      ok: true,
+      distanceMeters: 860,
+      durationSeconds: 720,
+      polyline: "135.10,35.00;135.11,35.01",
+      fetchedAt: Date.now(),
+      fromPoiId: "poi-from",
+      toPoiId: "poi-to",
+    });
+    await saveRoutePick(db, {
+      id: "from:to",
+      tripId: "trip-redraw",
+      fromItemId: "from",
+      toItemId: "to",
+      mode: "walking",
+    });
+    render(
+      <MapPanel
+        tripId="trip-redraw"
+        destination="京都"
+        days={asDays([stop("from", "白川庵", 135.1), stop("to", "清水寺", 135.2)])}
+        selectedId={null}
+        onSelect={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "展开地图" }));
+    expect(await screen.findByTestId("map-polyline")).toHaveTextContent("135.10,35.00;135.11,35.01");
   });
 });

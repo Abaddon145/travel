@@ -1,10 +1,7 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
 import { AppShell } from "@/components/app-shell";
-import { BookingsPage } from "@/pages/bookings-page";
-import { BudgetPage } from "@/pages/budget-page";
+import { BookingsRoute, BudgetRoute, GuideRoute, KitRoute } from "@/lazy-pages";
 import { ExplorePage } from "@/pages/explore-page";
-import { GuidePage } from "@/pages/guide-page";
-import { KitPage } from "@/pages/kit-page";
 import { NotFoundPage } from "@/pages/not-found-page";
 import { PlanPage } from "@/pages/plan-page";
 import { ProfilePage } from "@/pages/profile-page";
@@ -19,10 +16,10 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <TripsPage /> },
       { path: "plan", element: <PlanPage /> },
       { path: "trips/:tripId", element: <TripDetailPage /> },
-      { path: "trips/:tripId/budget", element: <BudgetPage /> },
-      { path: "trips/:tripId/bookings", element: <BookingsPage /> },
-      { path: "trips/:tripId/kit", element: <KitPage /> },
-      { path: "trips/:tripId/guide", element: <GuidePage /> },
+      { path: "trips/:tripId/budget", element: <BudgetRoute /> },
+      { path: "trips/:tripId/bookings", element: <BookingsRoute /> },
+      { path: "trips/:tripId/kit", element: <KitRoute /> },
+      { path: "trips/:tripId/guide", element: <GuideRoute /> },
       { path: "explore", element: <ExplorePage /> },
       { path: "profile", element: <ProfilePage /> },
       { path: "*", element: <NotFoundPage /> },

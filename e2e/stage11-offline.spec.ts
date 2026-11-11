@@ -160,6 +160,8 @@ test("离线可打开已保存的行程，且不缓存鉴权响应", async ({ pa
   await page.getByRole("link", { name: /京都秋日/ }).click();
   await expect(page.getByRole("heading", { name: /京都秋日/ })).toBeVisible();
   await expect(page.getByText("清水寺").first()).toBeVisible();
+  await page.getByRole("button", { name: "展开地图" }).click();
+  await page.getByRole("button", { name: /清水寺/ }).first().click();
   await expect(page.getByRole("button", { name: "核对需要网络" }).first()).toBeVisible();
   await shot(page, "iphone-offline-trip");
 

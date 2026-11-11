@@ -1,7 +1,17 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { MotionConfig } from "motion/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PlanScreen, type PlanForm, type PlanPhase } from "@/components/plan-screen";
+
+function wrap(node: ReactNode) {
+  return (
+    <QueryClientProvider client={new QueryClient()}>
+      <MotionConfig reducedMotion="always">{node}</MotionConfig>
+    </QueryClientProvider>
+  );
+}
 
 const form: PlanForm = {
   destination: "",
@@ -55,39 +65,30 @@ const usage = {
 
 describe("起草界面状态", () => {
   it("覆盖空表单、生成、重试、预览和失败", () => {
+    const screenProps = {
+      form,
+      title: "",
+      onForm: vi.fn(),
+      onTitle: vi.fn(),
+      onSubmit: vi.fn(),
+      onRetry: vi.fn(),
+      onDiscard: vi.fn(),
+      onSave: vi.fn(),
+    };
     const { rerender } = render(
-      <MotionConfig reducedMotion="always">
+      wrap(
         <PlanScreen
-          form={form}
+          {...screenProps}
           phase={{ kind: "form", errors: { destination: "请填写目的地" } }}
-          title=""
-          onForm={vi.fn()}
-          onTitle={vi.fn()}
-          onSubmit={vi.fn()}
-          onRetry={vi.fn()}
-          onDiscard={vi.fn()}
-          onSave={vi.fn()}
-        />
-      </MotionConfig>,
+        />,
+      ),
     );
     expect(screen.getByLabelText("目的地")).toBeInTheDocument();
     expect(screen.getByText("请填写目的地")).toBeInTheDocument();
 
     const show = (phase: PlanPhase) => {
       rerender(
-        <MotionConfig reducedMotion="always">
-          <PlanScreen
-            form={form}
-            phase={phase}
-            title={draft.title}
-            onForm={vi.fn()}
-            onTitle={vi.fn()}
-            onSubmit={vi.fn()}
-            onRetry={vi.fn()}
-            onDiscard={vi.fn()}
-            onSave={vi.fn()}
-          />
-        </MotionConfig>,
+        wrap(<PlanScreen {...screenProps} title={draft.title} phase={phase} />),
       );
     };
     show({ kind: "generating" });

@@ -23,8 +23,8 @@ describe("应用外壳", () => {
     renderAt("/");
 
     expect(await screen.findByRole("heading", { name: "行程" })).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: "探索" }));
-    expect(await screen.findByRole("heading", { name: "探索" })).toBeInTheDocument();
+    await user.click(screen.getByRole("link", { name: "今天" }));
+    expect(await screen.findByRole("heading", { name: "今天" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "我的" }));
     expect(await screen.findByRole("heading", { name: "我的" })).toBeInTheDocument();
   });

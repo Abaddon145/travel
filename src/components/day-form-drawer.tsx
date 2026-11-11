@@ -4,12 +4,12 @@ import { FormDrawer } from "@/components/form-drawer";
 import { TextField } from "@/components/text-field";
 import { FieldGroup } from "@/components/ui/field";
 import { db } from "@/db/database";
-import { createDay, updateDay } from "@/db/repository";
+import { createDay, setDayLock, updateDay } from "@/db/repository";
 import { dayInputSchema, fieldErrors } from "@/db/validation";
 import type { DayView } from "@/domain/types";
 import { notifyError, notifySuccess } from "@/lib/feedback";
 
-const empty = { date: "", title: "", note: "" };
+const empty = { date: "", title: "", note: "", locked: false, lockedFrom: "", lockedTo: "" };
 
 export function DayFormDrawer({
   open,
@@ -29,7 +29,18 @@ export function DayFormDrawer({
   if (syncedKey !== sourceKey) {
     setSyncedKey(sourceKey);
     setErrors({});
-    setValues(day && open ? { date: day.date, title: day.title, note: day.note } : empty);
+    setValues(
+      day && open
+        ? {
+            date: day.date,
+            title: day.title,
+            note: day.note,
+            locked: day.locked === true,
+            lockedFrom: day.lockedFrom ?? "",
+            lockedTo: day.lockedTo ?? "",
+          }
+        : empty,
+    );
   }
 
   const mutation = useMutation({
@@ -39,8 +50,21 @@ export function DayFormDrawer({
         setErrors(fieldErrors(parsed.error));
         throw new Error("invalid");
       }
-      if (day) await updateDay(db, day.id, parsed.data);
-      else await createDay(db, tripId, parsed.data);
+      if (day) {
+        await updateDay(db, day.id, parsed.data);
+        const lockChanged =
+          values.locked !== (day.locked === true) ||
+          values.lockedFrom !== (day.lockedFrom ?? "") ||
+          values.lockedTo !== (day.lockedTo ?? "");
+        if (lockChanged) {
+          await setDayLock(db, day.id, values.locked, {
+            from: values.lockedFrom,
+            to: values.lockedTo,
+          });
+        }
+      } else {
+        await createDay(db, tripId, parsed.data);
+      }
     },
     onSuccess: () => {
       notifySuccess(day ? "这一天已更新" : "已添加一天");
@@ -85,6 +109,34 @@ export function DayFormDrawer({
           onChange={(value) => setValues((current) => ({ ...current, note: value }))}
           error={errors.note}
         />
+        {day ? (
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-sm">
+              锁定自
+              <input
+                type="time"
+                className="h-11 rounded-lg border bg-background px-2 text-base"
+                aria-label={`${day.title}锁定开始`}
+                value={values.lockedFrom}
+                onChange={(event) =>
+                  setValues((current) => ({ ...current, lockedFrom: event.target.value }))
+                }
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              锁定至
+              <input
+                type="time"
+                className="h-11 rounded-lg border bg-background px-2 text-base"
+                aria-label={`${day.title}锁定结束`}
+                value={values.lockedTo}
+                onChange={(event) =>
+                  setValues((current) => ({ ...current, lockedTo: event.target.value }))
+                }
+              />
+            </label>
+          </div>
+        ) : null}
       </FieldGroup>
     </FormDrawer>
   );

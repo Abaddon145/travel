@@ -9,7 +9,7 @@ import {
 
 const pages = [
   { path: "/", ready: "行程" },
-  { path: "/explore", ready: "探索" },
+  { path: "/explore", ready: "今天" },
   { path: "/profile", ready: "我的" },
   { path: "/trips/trip-kyoto", ready: "京都秋日" },
   { path: "/trips/trip-kyoto/budget", ready: "预算" },
@@ -56,6 +56,7 @@ for (const theme of ["light", "dark"] as const) {
     test("助手抽屉与锁定按钮有名称", async ({ page }) => {
       await page.goto("/trips/trip-kyoto");
       await expectTheme(page, theme);
+      await page.getByTestId("timeline-name").filter({ hasText: "白川庵" }).first().click();
       const lock = page.getByRole("button", { name: "解锁白川庵" }).first();
       await expect(lock).toBeVisible();
       const box = await lock.boundingBox();

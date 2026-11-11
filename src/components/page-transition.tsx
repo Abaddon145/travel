@@ -9,20 +9,22 @@ export function PageTransition() {
   const reduce = useReducedMotion();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        initial={reduce ? false : { opacity: 0, transform: "translateY(8px)" }}
-        animate={{ opacity: 1, transform: "translateY(0px)" }}
-        exit={
-          reduce
-            ? { opacity: 1, transform: "translateY(0px)" }
-            : { opacity: 0, transform: "translateY(-6px)" }
-        }
-        transition={{ duration: reduce ? 0 : 0.22, ease }}
-      >
-        {outlet}
-      </motion.div>
-    </AnimatePresence>
+    <div className="relative" data-app-scroll>
+      <AnimatePresence initial={false}>
+        <motion.div
+          key={location.pathname}
+          initial={reduce ? false : { opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={
+            reduce
+              ? { opacity: 1 }
+              : { opacity: 0, position: "absolute", top: 0, left: 0, right: 0 }
+          }
+          transition={{ duration: reduce ? 0 : 0.15, ease }}
+        >
+          {outlet}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   );
 }

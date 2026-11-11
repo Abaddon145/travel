@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { findScheduleConflicts } from "@/lib/schedule-conflicts";
 import type { StoredRoute } from "@/lib/route-status";
 
-const now = Date.parse("2026-11-04T00:00:00Z");
-
 function route(durationSeconds: number | null, ok = true): StoredRoute {
   return {
     id: "a:b:walking",
@@ -15,7 +13,7 @@ function route(durationSeconds: number | null, ok = true): StoredRoute {
     distanceMeters: ok ? 800 : null,
     durationSeconds,
     polyline: "120.1,30.2;120.2,30.3",
-    fetchedAt: now,
+    fetchedAt: Date.now(),
     fromPoiId: "",
     toPoiId: "",
   };
