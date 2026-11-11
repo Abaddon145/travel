@@ -199,10 +199,7 @@ function TimelineRow({
             type="button"
             id={`timeline-${item.id}`}
             data-testid="timeline-name"
-            className={cn(
-              "flex min-h-11 items-center rounded-sm text-left text-base font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50",
-              selected && "text-primary",
-            )}
+            className="flex min-h-11 items-center rounded-sm text-left text-base font-medium outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
             aria-current={selected ? "true" : undefined}
             onClick={() => {
               if (suppress.current) {

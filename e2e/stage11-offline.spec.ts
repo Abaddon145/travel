@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { settleEnter } from "./settle-enter";
 
 const directory = "docs/stage11/screenshots";
 
@@ -8,6 +9,7 @@ test.beforeAll(() => {
 });
 
 async function shot(page: Page, name: string) {
+  await settleEnter(page);
   await page.screenshot({ path: `${directory}/${name}.png` });
 }
 

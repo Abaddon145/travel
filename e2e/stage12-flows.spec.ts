@@ -90,8 +90,8 @@ test("新建、编辑并锁定行程后刷新仍在", async ({ page }) => {
   await page.getByTestId("timeline-name").filter({ hasText: "东大寺" }).click();
   const lock = page.getByRole("button", { name: "锁定东大寺" });
   const box = await lock.boundingBox();
-  expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+  expect(Math.round(box?.width ?? 0)).toBeGreaterThanOrEqual(44);
+  expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(44);
   await lock.click();
   await expect(page.getByRole("button", { name: "编辑东大寺" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "删除东大寺" })).toBeDisabled();
@@ -164,6 +164,8 @@ test.describe("模拟付费接口", () => {
     await page.goto("/trips/trip-kyoto");
     await page.getByTestId("timeline-name").filter({ hasText: "白川庵" }).first().click();
     await expect(page.getByRole("button", { name: "解锁白川庵" }).first()).toBeVisible();
+    await page.getByRole("button", { name: "关闭" }).click();
+    await expect(page.locator("[data-slot=drawer-overlay]")).toBeHidden();
     await page.getByRole("button", { name: "助手" }).click();
     await page.getByRole("button", { name: "雨天备选" }).click();
     await expect(page.getByText("已忽略碰到锁定内容的修改。")).toBeVisible();

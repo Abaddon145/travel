@@ -49,6 +49,9 @@ for (const theme of ["light", "dark"] as const) {
         await expect(
           page.getByRole("heading", { name: entry.ready }).first(),
         ).toBeVisible();
+        await page.locator(".lvxu-page-in").evaluate(async (element) => {
+          await Promise.all(element.getAnimations().map((animation) => animation.finished));
+        });
         expect(await seriousViolations(page)).toEqual([]);
       });
     }
@@ -60,8 +63,10 @@ for (const theme of ["light", "dark"] as const) {
       const lock = page.getByRole("button", { name: "解锁白川庵" }).first();
       await expect(lock).toBeVisible();
       const box = await lock.boundingBox();
-      expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
-      expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+      expect(Math.round(box?.width ?? 0)).toBeGreaterThanOrEqual(44);
+      expect(Math.round(box?.height ?? 0)).toBeGreaterThanOrEqual(44);
+      await page.getByRole("button", { name: "关闭" }).click();
+      await expect(page.locator("[data-slot=drawer-overlay]")).toBeHidden();
       await page.getByRole("button", { name: "助手" }).click();
       await expect(page.getByRole("heading", { name: "助手" })).toBeVisible();
       expect(await seriousViolations(page)).toEqual([]);

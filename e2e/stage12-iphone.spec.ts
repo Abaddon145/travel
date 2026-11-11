@@ -55,6 +55,8 @@ test("安全区、16px 输入和独立窗口样式都在", async ({ page }) => {
     return Number.parseFloat(getComputedStyle(element).fontSize);
   });
   expect(timeSize).toBeGreaterThanOrEqual(16);
+  await page.getByRole("button", { name: "取消" }).click();
+  await expect(page.locator("[data-slot=drawer-overlay]")).toBeHidden();
   await page.getByRole("button", { name: "助手" }).click();
   const noteSize = await page.getByLabel("调整说明").evaluate((element) => {
     return Number.parseFloat(getComputedStyle(element).fontSize);

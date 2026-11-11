@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { settleEnter } from "./settle-enter";
 import {
   applyTheme,
   blockPaidUpstream,
@@ -14,6 +15,7 @@ test.beforeAll(() => {
 });
 
 async function shot(page: Page, info: TestInfo, theme: string, name: string) {
+  await settleEnter(page);
   await page.screenshot({
     path: `${directory}/${info.project.name}-${theme}-${name}.png`,
   });

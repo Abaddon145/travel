@@ -85,7 +85,11 @@ test("核对地点并只显示高德返回的距离", async ({ page }) => {
   await page.getByRole("button", { name: /东山区清水/ }).click();
   await expect(page.getByText("已核对").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "核实步行" }).first().click();
+  const arrival = page
+    .getByRole("heading", { name: "抵达白川", level: 3 })
+    .locator("xpath=ancestor::section[1]");
+  await arrival.getByRole("button", { name: "1. 清水寺 · 已核对" }).click();
+  await arrival.getByRole("button", { name: "核实步行" }).click();
   await expect(page.getByText("步行 860 米 · 12 分钟")).toBeVisible();
   await page.screenshot({ path: `${directory}/verified.png` });
 });

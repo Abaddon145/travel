@@ -12,7 +12,11 @@
 - P1：时间线默认只读，点项目开操作抽屉；左滑删除、长按拖动排序，抽屉里仍有上移/下移/锁定/编辑/删除。时段锁定放进「编辑这一天」。文档滚动 + `ScrollRestoration`，底部标签固定。页面过渡约 0.15s，不再 `mode="wait"`。「探索」改成「今天」（`/explore` 路径不变）：倒计时或第几天、下一站、Open-Meteo 天气。首页按即将出发/进行中/已结束分组，删除收进「更多」并保留左滑。用量主界面是「今日 n/30」，令牌和美元放进折叠。私人密钥改成「保存并验证」，起草未授权、地图未授权、助手未授权时就地出现同一张表单。抽屉跟随 `visualViewport`，保存/取消在表单顶部。展开的地图吸在页头下，选中项有底色，标记在未减少动态效果时跳动，展开状态记在 `sessionStorage`。刷新后重画已选路线并 `setFitView`。预算、预订、清单、攻略、地图画布、助手仍然 `lazy()`。
 - P2：排序和锁定不再弹成功提示；版本恢复的确认写在抽屉里，并先给出天数和项目名。预算「实际」只在超出预计时用朱砂（`data-over`）。返回链接在有历史时 `navigate(-1)`。按钮按下缩小；Capacitor 壳加了 `@capacitor/haptics@8.0.2`，`ios/App/CapApp-SPM/Package.swift` 已由 `cap sync` 写入。404 和找不到行程用 `MissingState`。兴趣改标签，目的地有本地联想。助手对话进 `sessionStorage`。`revise` 用量写入本机 `aiUsage`。`/assets/*` 为一年 `immutable`；`public/robots.txt` 为 `Disallow: /`。`connect-src` 增加 Open-Meteo。
 
-## 还没做完
+## 验收
+
+整轮 Playwright、lint、类型检查、单元测试和生产构建已经记在 [ACCEPTANCE.md](./ACCEPTANCE.md)。下面的失败记录是验收之前的现场，不要再当成当前状态。
+
+## 当时还没做完
 
 没有再跑完一整轮 `npx playwright test`。不要把下面的修补当成已经验收。
 
@@ -50,7 +54,7 @@
 
 ## 包体积
 
-审计基线：单个 JS 1010KB，gzip 312KB。
+审计基线：单个 JS 1010KB，gzip 312KB。验收时的首屏数字在 [ACCEPTANCE.md](./ACCEPTANCE.md)，比下面这组更晚，以那份为准。
 
 当前树最近一次生产构建（详情和起草已回到首包）首屏 modulepreload：
 
@@ -71,14 +75,4 @@ CSS `index-xnjb4XAk.css` 61652 字节。文件名会随下次构建变化。Vite
 
 ## 接着做
 
-```bash
-git fetch origin cursor/ux-pass-1f8b
-git checkout cursor/ux-pass-1f8b
-npm ci
-npx playwright install --with-deps chromium webkit
-```
-
-1. 在 `e2e/stage12-a11y.spec.ts` 量完「解锁白川庵」之后、点「助手」之前，点「关闭」。同样检查 `stage12-flows` 的助手测例会不会被同一个抽屉挡住。
-2. `npx playwright test`。先看 `stage12-a11y`、`stage12-flows`、`stage12-iphone`、`stage11-offline`、`stage08-map`、`persistence`、`screenshots`、`ux-pass`。
-3. 全绿后再 `npm run lint && npm run typecheck && npm run test && npm run build`，记下新的首屏体积。补 `docs/ux-pass/ACCEPTANCE.md` 和截图。Lighthouse 与生产冒烟留到合并之后。
-4. 不要在这一轮直接推 `main`。合并和部署等接手的人确认 Playwright 全绿。
+验收和未合并的 PR 见 [ACCEPTANCE.md](./ACCEPTANCE.md)。Lighthouse、真机和生产冒烟留到合并之后。不要在确认之前推 `main` 或执行 `wrangler deploy`。

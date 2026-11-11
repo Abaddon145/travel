@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+import { settleEnter } from "./settle-enter";
 
 const directory = "/opt/cursor/artifacts/screenshots";
 
@@ -11,6 +12,7 @@ test("记录 iPhone 视口下的主要界面", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
   await expect(page.getByRole("link", { name: /京都秋日/ })).toBeVisible();
+  await settleEnter(page);
   await page.screenshot({ path: `${directory}/trip-list.png` });
 
   await page.getByRole("link", { name: /京都秋日/ }).click();
