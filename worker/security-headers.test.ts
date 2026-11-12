@@ -1,6 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { applySecurityHeaders } from "./security-headers";
+import { legacyShellOrigin, shellOrigin } from "../shared/shell-origin";
+import {
+  applySecurityHeaders,
+  shellFrameContentSecurityPolicy,
+} from "./security-headers";
 
 describe("安全响应头", () => {
   it("补上策略头，且不改写已有的缓存指令", async () => {
@@ -55,5 +59,42 @@ describe("安全响应头", () => {
     expect(directive("img-src")).toContain("https://lvxu-ai-travel.lvxu.workers.dev");
     expect(directive("style-src")).toBe("style-src 'self' 'unsafe-inline'");
     expect(directive("worker-src")).toBe("worker-src 'self' blob:");
+    expect(directive("frame-src")).toBe(
+      "frame-src 'self' https://lvxu-ai-travel.lvxu.workers.dev",
+    );
+    expect(directive("child-src")).toBe(
+      "child-src 'self' blob: https://lvxu-ai-travel.lvxu.workers.dev",
+    );
+    expect(directive("frame-ancestors")).toBe("frame-ancestors 'none'");
+  });
+
+  it("只有地图页允许壳来源嵌入，其它响应仍拒绝被嵌入", () => {
+    const denied = applySecurityHeaders(
+      new Response("page", { headers: { "x-frame-options": "SAMEORIGIN" } }),
+    );
+    expect(denied.headers.get("x-frame-options")).toBe("DENY");
+    expect(denied.headers.get("content-security-policy")).toContain(
+      "frame-ancestors 'none'",
+    );
+
+    const framed = applySecurityHeaders(
+      new Response("<html></html>", {
+        headers: {
+          "x-frame-options": "DENY",
+          "content-security-policy": "frame-ancestors 'none'",
+        },
+      }),
+      { framing: "shell" },
+    );
+    const policy = framed.headers.get("content-security-policy") ?? "";
+    const ancestors =
+      policy.split("; ").find((part) => part.startsWith("frame-ancestors ")) ?? "";
+    expect(ancestors).toBe(shellFrameContentSecurityPolicy().split("; ").at(-1));
+    expect(ancestors).toBe(`frame-ancestors ${shellOrigin} ${legacyShellOrigin}`);
+    expect(policy).not.toContain("frame-ancestors 'none'");
+    expect(policy).toContain("script-src 'self' https://webapi.amap.com");
+    expect(framed.headers.get("x-frame-options")).toBeNull();
+    expect(ancestors).not.toContain("*");
+    expect(ancestors).not.toContain("https:");
   });
 });

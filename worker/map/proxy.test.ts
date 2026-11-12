@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { sha256Bytes } from "../owner-key";
 import { mapCookieHeader, mapCookieValid } from "./cookie";
+import { mapFrameTokenValid, mintMapFrameToken } from "./frame-token";
 import { handleAmapProxy } from "./proxy";
 
 async function ownerHash(key: string) {
@@ -106,6 +107,61 @@ describe("地图代理", () => {
       recordFailure,
     );
     expect(anonymous.status).toBe(401);
+    expect(recordFailure).not.toHaveBeenCalled();
+  });
+
+  it("短时地图令牌可以代替 cookie，且不会转发给高德", async () => {
+    const minted = await mintMapFrameToken(env.OWNER_KEY_SHA256);
+    expect(await mapFrameTokenValid(env.OWNER_KEY_SHA256, minted.token)).toBe(true);
+    const cookie = await mapCookieHeader(env.OWNER_KEY_SHA256);
+    expect(
+      await mapFrameTokenValid(
+        env.OWNER_KEY_SHA256,
+        cookie.split(";")[0]?.split("=")[1] ?? "",
+      ),
+    ).toBe(false);
+    expect(await mapCookieValid(env.OWNER_KEY_SHA256, `lvxu_map=${minted.token}`)).toBe(
+      false,
+    );
+
+    let seen = "";
+    let seenHeaders = new Headers();
+    function strictFetch(this: unknown, input: URL, init?: RequestInit) {
+      if (this !== undefined && this !== globalThis)
+        throw new TypeError("Illegal invocation");
+      seen = input.toString();
+      seenHeaders = new Headers(init?.headers);
+      return new Response("{}", { status: 200 });
+    }
+    const allowed = await handleAmapProxy(
+      new Request("https://lvxu.test/_AMapService/v5/place/text?keywords=京都", {
+        headers: { "x-lvxu-map-token": minted.token, accept: "application/json" },
+      }),
+      env,
+      async () => ({ success: true }),
+      strictFetch as unknown as typeof fetch,
+    );
+    expect(allowed.status).toBe(200);
+    expect(seen).toContain("jscode=server-only-code");
+    expect(seen).not.toContain(minted.token);
+    expect(seenHeaders.get("x-lvxu-map-token")).toBeNull();
+    expect(seenHeaders.get("authorization")).toBeNull();
+
+    const recordFailure = vi.fn(async () => ({ success: true }));
+    const expired = await mintMapFrameToken(
+      env.OWNER_KEY_SHA256,
+      Date.now() - 31 * 60 * 1000,
+    );
+    const rejected = await handleAmapProxy(
+      new Request("https://lvxu.test/_AMapService/v5/place/text", {
+        headers: { "x-lvxu-map-token": expired.token },
+      }),
+      env,
+      async () => ({ success: true }),
+      strictFetch as unknown as typeof fetch,
+      recordFailure,
+    );
+    expect(rejected.status).toBe(401);
     expect(recordFailure).not.toHaveBeenCalled();
   });
 });

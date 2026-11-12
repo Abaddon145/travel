@@ -22,6 +22,10 @@ describe("静态资源安全头", () => {
     expect(scriptSrc).not.toContain("'unsafe-inline'");
     expect(policy).toContain(workerOrigin);
     expect(metaContentSecurityPolicy()).toContain(workerOrigin);
+    expect(metaContentSecurityPolicy()).toContain(`frame-src 'self' ${workerOrigin}`);
+    expect(metaContentSecurityPolicy()).toContain(
+      `child-src 'self' blob: ${workerOrigin}`,
+    );
     expect(metaContentSecurityPolicy()).not.toContain("frame-ancestors");
     const html = injectContentSecurityPolicy("<html><head></head><body></body></html>");
     expect(html).toContain('http-equiv="Content-Security-Policy"');

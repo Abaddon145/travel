@@ -11,7 +11,7 @@ iOS 壳用 Capacitor 8 装进已经构建好的网页。GitHub Actions 的 macOS
 下面这些需要手机联网，并且要能访问现有的 Cloudflare Worker：
 
 - AI 助手
-- 高德地图（地点、路线，以及底图走 Worker 上的 `/_AMapService`）
+- 高德地图（地点和路线走 Worker 的 `/api/map/*`；底图在壳里嵌 HTTPS 地图页，由该页使用 `/_AMapService`）
 - 天气
 - 在「我的」里验证私人密钥
 
@@ -21,13 +21,19 @@ Worker 地址仍是 `https://lvxu-ai-travel.lvxu.workers.dev`。密钥留在 Wor
 
 壳里不注册 Service Worker。页面已经在安装包里，更新 App 要重新签名安装，不是网页上的刷新提示。
 
-## 从旧包装上来
+## 这一包不换页面源
 
-旧包的本机行程和私人密钥记在 `capacitor://localhost`。这一版换了页面主机，打开后会像是空的。换之前在旧包的「我的」里导出备份；装好新包后导入，并重新保存私人密钥。保持 Bundle ID 只让系统把它当成同一个 App，不会把两个页面源的存储并到一起。
+页面源仍是 `capacitor://lvxu-ai-travel.lvxu.workers.dev`。已经装过这个源的包，这次不用导出备份，也不用重新导入。重签安装不会因为这一包清掉本机行程。
 
-底图走高德 JS API。白名单里已有生产域名，控制台不接受 `localhost`。新包把页面主机设成这个生产域名，但 iOS 的 WebView 对 `capacitor://` 可能不发送 Referer。展开地图后若看到「底图没有加载……」，已核对的地点和已保存的路线仍可使用。不要把高德密钥写进 App。新包的接口要等 Worker 放行 `capacitor://lvxu-ai-travel.lvxu.workers.dev` 之后才通；在那之前，已安装的旧包仍走原来的源。
+若手机上还是更早的 `capacitor://localhost` 包，那个源和现在的源仍然不是同一份存储。换过来之前，先在旧包的「我的」里导出备份；装好后导入，并重新保存私人密钥。Bundle ID 不变只表示系统把它当成同一个 App，不会把两个页面源的存储并到一起。
 
-没有设置 `allowNavigation`，也没有打开 cleartext。壳不把整个窗口导航到别的网站。
+## 壳里的底图
+
+展开地图时，壳在地图区域里嵌一页 `https://lvxu-ai-travel.lvxu.workers.dev/map-frame`。底图文档在这个 HTTPS 源上，好让高德按域名白名单放行。行程仍在手机本机。网页版不走这个 iframe，还是直接画底图。
+
+这一页要等 Worker 部署带地图页响应头和短时地图令牌的版本之后才开得起来。在那之前，或手机离线、页面打不开时，地图区域显示「底图没有加载。地点和路线仍可使用；若它们已经显示，多半是高德没有接受当前页面来源。」时间线上的地点和已保存的路线仍可使用。不要把高德密钥写进 App。
+
+没有设置 `allowNavigation`，也没有打开 cleartext。壳不把整个窗口导航到线上站点。
 
 Bundle ID 是 `app.lvxu.travel`。显示名是「旅序」。
 
@@ -48,7 +54,7 @@ Bundle ID 是 `app.lvxu.travel`。显示名是「旅序」。
 3. 打开开发者模式：设置 → 隐私与安全性 → 开发者模式。按提示重启。这项有时要等 Sideloadly 第一次尝试安装后才出现。
 4. 打开 Sideloadly，把 `lvxu-unsigned.ipa` 拖进去，选中这台 iPhone。Apple ID 和密码只在本机 Sideloadly 里输入。
 5. 安装完成后，在 iPhone 上打开设置 → 通用 → VPN 与设备管理，信任刚装上的开发者描述文件，再打开「旅序」。
-6. 进入「我的」，重新保存私人密钥并验证。App 里的 WebView 和 Safari 不共享本地存储，Safari 里保存的密钥不会跟着过来。行程、预算这些也在本机 IndexedDB 里。需要带走 Safari 里的行程时，先在 Safari 的「我的」导出备份，再在 App 里导入。
-7. 免费 Apple ID 的签名大约每 7 天失效。用同一个 Apple ID、同一个 Bundle ID `app.lvxu.travel` 对这份 ipa 再签一次。Bundle ID 不变时，系统把它当成同一个 App。页面源不变的重签不会清掉本机行程；若这一包把源从 `capacitor://localhost` 换成 `capacitor://lvxu-ai-travel.lvxu.workers.dev`，要先按上一节导出备份。
+6. 进入「我的」，重新保存私人密钥并验证。App 里的 WebView 和 Safari 不共享本地存储，Safari 里保存的密钥不会跟着过来。行程、预算这些也在本机 IndexedDB 里。需要带走 Safari 里的行程时，先在 Safari 的「我的」导出备份，再在 App 里导入。若上一包已经是 `capacitor://lvxu-ai-travel.lvxu.workers.dev`，这一包不换页面源，本机行程还在，不必为了这次更新先导出。
+7. 免费 Apple ID 的签名大约每 7 天失效。用同一个 Apple ID、同一个 Bundle ID `app.lvxu.travel` 对这份 ipa 再签一次。Bundle ID 不变时，系统把它当成同一个 App。页面源不变的重签不会清掉本机行程。这一包的页面源没有变。只有从 `capacitor://localhost` 换到 `capacitor://lvxu-ai-travel.lvxu.workers.dev` 时，才要先按上一节导出备份。
 
 Apple ID 密码只留在本机 Sideloadly。不要写进仓库、工作流、日志或截图。

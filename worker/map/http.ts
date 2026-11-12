@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { amapGet, messageFor, parsePois, parseRoute } from "./amap";
+import { mapCookieSecret } from "./cookie";
+import { mintMapFrameToken } from "./frame-token";
 
 const lngLat = z.string().regex(/^-?\d{1,3}\.\d{1,6},-?\d{1,2}\.\d{1,6}$/);
 
@@ -55,15 +57,30 @@ export async function handleMapRequest(
   }
   if (url.pathname === "/api/map/config") {
     const key = env.AMAP_JS_KEY?.trim() ?? "";
-    if (!key) return json({ error: "not_configured", message: messageFor("not_configured") }, 501);
+    if (!key)
+      return json(
+        { error: "not_configured", message: messageFor("not_configured") },
+        501,
+      );
     return json({ key, serviceHost: "/_AMapService", version: "2.0" });
+  }
+  if (url.pathname === "/api/map/frame-token") {
+    const secret = mapCookieSecret(env);
+    if (!secret)
+      return json(
+        { error: "not_configured", message: messageFor("not_configured") },
+        501,
+      );
+    return json(await mintMapFrameToken(secret));
   }
 
   const webKey = env.AMAP_WEB_KEY?.trim() ?? "";
-  if (!webKey) return json({ error: "not_configured", message: messageFor("not_configured") }, 501);
+  if (!webKey)
+    return json({ error: "not_configured", message: messageFor("not_configured") }, 501);
 
   const params = Object.fromEntries(url.searchParams.entries());
-  if (url.pathname === "/api/map/poi/search") return cached(request, () => search(fetchImpl, webKey, params));
+  if (url.pathname === "/api/map/poi/search")
+    return cached(request, () => search(fetchImpl, webKey, params));
   if (url.pathname === "/api/map/poi/around") return around(fetchImpl, webKey, params);
   if (url.pathname === "/api/map/poi/detail") return detail(fetchImpl, webKey, params);
   if (url.pathname === "/api/map/geocode") return geocode(fetchImpl, webKey, params);
@@ -87,9 +104,14 @@ async function cached(request: Request, load: () => Promise<Response>) {
   return response;
 }
 
-async function search(fetchImpl: typeof fetch, key: string, params: Record<string, string>) {
+async function search(
+  fetchImpl: typeof fetch,
+  key: string,
+  params: Record<string, string>,
+) {
   const parsed = searchSchema.safeParse(params);
-  if (!parsed.success) return json({ error: "validation_error", message: "请填写地点关键字" }, 422);
+  if (!parsed.success)
+    return json({ error: "validation_error", message: "请填写地点关键字" }, 422);
   const result = await call(fetchImpl, key, "/v5/place/text", {
     keywords: parsed.data.keywords,
     region: parsed.data.region ?? "",
@@ -100,9 +122,14 @@ async function search(fetchImpl: typeof fetch, key: string, params: Record<strin
   return json({ pois: parsePois(result.payload) });
 }
 
-async function around(fetchImpl: typeof fetch, key: string, params: Record<string, string>) {
+async function around(
+  fetchImpl: typeof fetch,
+  key: string,
+  params: Record<string, string>,
+) {
   const parsed = aroundSchema.safeParse(params);
-  if (!parsed.success) return json({ error: "validation_error", message: "坐标不正确" }, 422);
+  if (!parsed.success)
+    return json({ error: "validation_error", message: "坐标不正确" }, 422);
   const result = await call(fetchImpl, key, "/v5/place/around", {
     location: parsed.data.location,
     keywords: parsed.data.keywords ?? "",
@@ -113,9 +140,14 @@ async function around(fetchImpl: typeof fetch, key: string, params: Record<strin
   return json({ pois: parsePois(result.payload) });
 }
 
-async function detail(fetchImpl: typeof fetch, key: string, params: Record<string, string>) {
+async function detail(
+  fetchImpl: typeof fetch,
+  key: string,
+  params: Record<string, string>,
+) {
   const parsed = detailSchema.safeParse(params);
-  if (!parsed.success) return json({ error: "validation_error", message: "缺少地点编号" }, 422);
+  if (!parsed.success)
+    return json({ error: "validation_error", message: "缺少地点编号" }, 422);
   const result = await call(fetchImpl, key, "/v5/place/detail", { id: parsed.data.id });
   if (!result.ok) return json(result, statusFor(result.error));
   const pois = parsePois(result.payload);
@@ -124,12 +156,20 @@ async function detail(fetchImpl: typeof fetch, key: string, params: Record<strin
   return json({ poi });
 }
 
-async function geocode(fetchImpl: typeof fetch, key: string, params: Record<string, string>) {
+async function geocode(
+  fetchImpl: typeof fetch,
+  key: string,
+  params: Record<string, string>,
+) {
   const parsed = geocodeSchema.safeParse(params);
-  if (!parsed.success) return json({ error: "validation_error", message: "请填写地址" }, 422);
-  const result = await call(fetchImpl, key, "/v3/geocode/geo", { address: parsed.data.address });
+  if (!parsed.success)
+    return json({ error: "validation_error", message: "请填写地址" }, 422);
+  const result = await call(fetchImpl, key, "/v3/geocode/geo", {
+    address: parsed.data.address,
+  });
   if (!result.ok) return json(result, statusFor(result.error));
-  const geocodes = (result.payload as { geocodes?: Record<string, unknown>[] }).geocodes ?? [];
+  const geocodes =
+    (result.payload as { geocodes?: Record<string, unknown>[] }).geocodes ?? [];
   const first = geocodes[0];
   return json({
     location: typeof first?.location === "string" ? first.location : "",
@@ -137,19 +177,31 @@ async function geocode(fetchImpl: typeof fetch, key: string, params: Record<stri
   });
 }
 
-async function regeo(fetchImpl: typeof fetch, key: string, params: Record<string, string>) {
+async function regeo(
+  fetchImpl: typeof fetch,
+  key: string,
+  params: Record<string, string>,
+) {
   const parsed = regeoSchema.safeParse(params);
-  if (!parsed.success) return json({ error: "validation_error", message: "坐标不正确" }, 422);
-  const result = await call(fetchImpl, key, "/v3/geocode/regeo", { location: parsed.data.location });
+  if (!parsed.success)
+    return json({ error: "validation_error", message: "坐标不正确" }, 422);
+  const result = await call(fetchImpl, key, "/v3/geocode/regeo", {
+    location: parsed.data.location,
+  });
   if (!result.ok) return json(result, statusFor(result.error));
-  const address = (result.payload as { regeocode?: { formatted_address?: unknown } }).regeocode
-    ?.formatted_address;
+  const address = (result.payload as { regeocode?: { formatted_address?: unknown } })
+    .regeocode?.formatted_address;
   return json({ address: typeof address === "string" ? address : "" });
 }
 
-async function route(fetchImpl: typeof fetch, key: string, params: Record<string, string>) {
+async function route(
+  fetchImpl: typeof fetch,
+  key: string,
+  params: Record<string, string>,
+) {
   const parsed = routeSchema.safeParse(params);
-  if (!parsed.success) return json({ error: "validation_error", message: "路线参数不正确" }, 422);
+  if (!parsed.success)
+    return json({ error: "validation_error", message: "路线参数不正确" }, 422);
   if (parsed.data.mode === "transit") {
     if (!parsed.data.city) {
       return json({ error: "validation_error", message: "公交需要城市编码" }, 422);
@@ -162,10 +214,12 @@ async function route(fetchImpl: typeof fetch, key: string, params: Record<string
     });
     if (!result.ok) return json(result, statusFor(result.error));
     const routeResult = parseRoute(result.payload, parsed.data.mode);
-    if (!routeResult) return json({ error: "not_found", message: "高德没有返回可用路线" }, 404);
+    if (!routeResult)
+      return json({ error: "not_found", message: "高德没有返回可用路线" }, 404);
     return json({ route: routeResult, fetchedAt: Date.now() });
   }
-  const path = parsed.data.mode === "walking" ? "/v5/direction/walking" : "/v5/direction/driving";
+  const path =
+    parsed.data.mode === "walking" ? "/v5/direction/walking" : "/v5/direction/driving";
   const query: Record<string, string> = {
     origin: parsed.data.origin,
     destination: parsed.data.destination,
@@ -174,7 +228,8 @@ async function route(fetchImpl: typeof fetch, key: string, params: Record<string
   const result = await call(fetchImpl, key, path, query);
   if (!result.ok) return json(result, statusFor(result.error));
   const routeResult = parseRoute(result.payload, parsed.data.mode);
-  if (!routeResult) return json({ error: "not_found", message: "高德没有返回可用路线" }, 404);
+  if (!routeResult)
+    return json({ error: "not_found", message: "高德没有返回可用路线" }, 404);
   return json({ route: routeResult, fetchedAt: Date.now() });
 }
 
@@ -184,9 +239,21 @@ async function call(
   path: string,
   query: Record<string, string>,
 ) {
-  let last = await amapGet({ fetchImpl, key, path, query, signal: AbortSignal.timeout(8000) });
+  let last = await amapGet({
+    fetchImpl,
+    key,
+    path,
+    query,
+    signal: AbortSignal.timeout(8000),
+  });
   if (!last.ok && (last.error === "network" || last.error === "upstream_unavailable")) {
-    last = await amapGet({ fetchImpl, key, path, query, signal: AbortSignal.timeout(8000) });
+    last = await amapGet({
+      fetchImpl,
+      key,
+      path,
+      query,
+      signal: AbortSignal.timeout(8000),
+    });
   }
   return last;
 }
