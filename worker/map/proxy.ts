@@ -1,6 +1,7 @@
 import { enforceRateLimit, rateLimitKey, type RateLimiter } from "../rate-limit";
 import { ownerKeyMatches, readPresentedOwnerKey } from "../owner-key";
 import { mapCookieSecret, mapCookieValid } from "./cookie";
+import { mapFrameTokenValid, readMapFrameToken } from "./frame-token";
 
 export type ProxyEnv = {
   ENVIRONMENT?: string;
@@ -76,6 +77,10 @@ async function authorizeProxy(
   if (await mapCookieValid(secret, request.headers.get("cookie"))) return null;
   const presented = readPresentedOwnerKey(request);
   if (presented && (await ownerKeyMatches(presented, secret))) return null;
+  if (!presented) {
+    const token = readMapFrameToken(request);
+    if (token && (await mapFrameTokenValid(secret, token))) return null;
+  }
   if (presented && recordFailure) {
     const ip = request.headers.get("cf-connecting-ip") ?? "unknown";
     const failureKey = await rateLimitKey(null, `auth-fail:${ip}`);

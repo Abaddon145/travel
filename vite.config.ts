@@ -73,7 +73,11 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api\//, /^\/_AMapService\//],
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/_AMapService\//,
+          /^\/map-frame(?:\.html)?$/,
+        ],
         globPatterns: ["**/*.{js,css,html,svg,png,ico,webmanifest}"],
         globIgnores: ["**/node_modules/**/*", "sw.js", "workbox-*.js", "**/splash/**"],
         clientsClaim: true,
@@ -98,6 +102,14 @@ export default defineConfig({
       },
     }),
   ],
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve("index.html"),
+        mapFrame: path.resolve("map-frame.html"),
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(process.cwd(), "src"),

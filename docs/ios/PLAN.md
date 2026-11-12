@@ -79,3 +79,43 @@ GitHub Actions 不能用免费 Apple ID 签名，也不能装到真机。本变�
 换主机名会换掉 WebView 源。已装旧包里的 IndexedDB 和私人密钥留在 `capacitor://localhost`，新包看不到。装新包之前先在旧包里导出备份，装好后再导入，并在「我的」里重新保存私人密钥。同一个 Bundle ID 不会把两个源的存储并到一起。
 
 WKWebView 大约从 iOS 14.6 起把自定义 scheme 当成安全上下文，`crypto.randomUUID` 应还能用来新建行程。规范里的可信源并不包括非 localhost 的自定义主机，装到真机后要确认还能新建行程。壳仍然不注册 Service Worker。
+
+## 底图改由 HTTPS 地图页承载
+
+真机已确认：只把壳的主机名对齐白名单不够。展开地图仍是空白，画布写着「底图没有加载……」。地点核对和步行、驾车路线正常，因为它们走 Worker `/api/map/*` 的 Web 服务密钥。网页版用同一把 JS key，HTTPS 源上底图正常。
+
+高德 JS API 2.0 的域名白名单核对的是脚本和瓦片请求的 Referer 主机。安全密钥仍只在 Worker 的 `/_AMapService` 里追加为 `jscode`，不进页面。官方建议生产环境用 `serviceHost` 代理，而不是在页面里写 `securityJsCode`。Capacitor 8 的 `WKWebView` 不能把本地包的页面源改成 `https`（`http` / `https` 会被退回 `capacitor`）。iframe 子框架导航不走 `allowNavigation`：`WebViewDelegationHandler` 只拦截主框架离开应用源的导航。因此不设置 `allowNavigation`，顶层窗口仍不能打开线上整页。
+
+这一版只在原生壳里，把底图换成 `https://lvxu-ai-travel.lvxu.workers.dev/map-frame` 的 iframe。地图文档自己处在已经写进白名单的 HTTPS 源上，`Referrer-Policy: strict-origin-when-cross-origin` 让跨站脚本请求带上该源。网页版仍直接渲染 `AmapCanvas`。壳的页面源不变，仍是 `capacitor://lvxu-ai-travel.lvxu.workers.dev`。这次不需要为换源导出或导入备份。
+
+行程仍在壳的 IndexedDB。postMessage 只传标记（id、经纬度、名称、颜色、序号）、当前选中 id、正在绘制的路线（polyline 和 walking/driving/transit）。选择从地图页发回。两边都校验来源：壳只接受地图页源，地图页只接受 `capacitor://lvxu-ai-travel.lvxu.workers.dev` 和旧的 `capacitor://localhost`。`targetOrigin` 不用 `*`。
+
+`lvxu_map` 仍是 `SameSite=Strict`。它不会随跨站 iframe 送出，iOS 也会把这种 cookie 当成第三方 cookie。壳用私人密钥换一张 30 分钟的地图令牌（HMAC，载荷与 cookie 不同，不能互充），再 postMessage 给已核对来源的 iframe。令牌放在 `X-Lvxu-Map-Token`，只放行 `/api/map/config` 和 `/_AMapService`。路线、检索、AI 和其它门禁仍要私人密钥或原来的 cookie。令牌不进 URL、不进 localStorage、不进日志。JS key 仍由地图页自己向 Worker 领取。带令牌的配置请求不签发 `lvxu_map`。
+
+`frame-ancestors` 只在 `/map-frame` 和 `/map-frame.html` 放宽为那两个壳源，并且去掉 `X-Frame-Options`。其它响应仍是 `frame-ancestors 'none'` 和 `X-Frame-Options: DENY`。这两条路径写入 `run_worker_first`，由 Worker 取静态页再改头；页面里没有 `name="lvxu-map-frame"` 时按 404 拒绝嵌入，避免 SPA 回退把整站套上宽松策略。壳的 CSP meta 增加 `frame-src` 和 `child-src`，允许嵌这一个 HTTPS 源。Service Worker 的导航回退排除 `/map-frame`，地图页自己不注册 Service Worker。
+
+iframe 打不开、令牌失败或超时，地图区域显示原来的「底图没有加载……」。时间线、地点和已保存路线继续可用。直接打开地图页时不请求高德。
+
+| 文件 | 改动 |
+| --- | --- |
+| `shared/map-frame.ts` | 协议、来源校验、地图页路径和底图失败文案。 |
+| `shared/security-headers.ts` | `frame-src` / `child-src`。地图页单独的 `frame-ancestors`。 |
+| `public/_headers` | 与共享策略一致。壳的 meta 因此允许嵌地图页。 |
+| `worker/map/frame-token.ts` | 签发和校验短时地图令牌。 |
+| `worker/map/document.ts` | 地图页响应头。只有带标记的文档放宽嵌入。 |
+| `worker/map/http.ts` | `GET /api/map/frame-token`。仍走原有门禁。 |
+| `worker/map/proxy.ts` | 没有私人密钥时，短时令牌可以过 `/_AMapService`。 |
+| `worker/api.ts` | 令牌只额外放行 `/api/map/config`。 |
+| `worker/index.ts` | 地图页路由；带令牌的配置请求不写 cookie。 |
+| `wrangler.jsonc` | `run_worker_first` 加上 `/map-frame` 与 `/map-frame.html`。 |
+| `map-frame.html`、`src/map-frame/*` | 只含底图的 HTTPS 页面。 |
+| `src/components/map-frame-host.tsx` | 壳内 iframe、postMessage 和失败说明。 |
+| `src/components/map-panel.tsx` | 仅原生壳改走 iframe。网页版仍是 `AmapCanvas`。 |
+| `src/lib/map-frame-auth.ts` | 地图页给 `/_AMapService` 附上令牌。 |
+| `vite.config.ts` | 多页构建；Service Worker 不接管 `/map-frame`。 |
+| `capacitor.config.ts` | 仍不设 `server.url` 和 `allowNavigation`。 |
+| `.github/workflows/ios-build.yml` | `map-frame.html` 也触发未签名 IPA。 |
+
+不改 `AUTH_MODE`、不把 jscode 或 JS key 写进仓库，也不执行 `wrangler deploy`。线上 Worker 部署这一版之前，壳里的 iframe 会被现有的 `frame-ancestors 'none'` 拒绝，地图区域显示失败说明；地点和路线不受影响。
+
+真机还要确认：iframe 里的高德脚本和瓦片是否带上 `https://lvxu-ai-travel.lvxu.workers.dev/` 这个 Referer，以及 WebKit 是否接受 `frame-ancestors` 里的 `capacitor://` 主机源。若瓦片仍被拒绝，页面里仍是原来的失败说明，不改成放行全部 `capacitor:` scheme。

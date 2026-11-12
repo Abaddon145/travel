@@ -2,7 +2,9 @@ const COOKIE = "lvxu_map";
 const TTL_SECONDS = 30 * 60;
 
 function hex(bytes: ArrayBuffer) {
-  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return [...new Uint8Array(bytes)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function constantTimeEqual(actual: string, expected: string) {
@@ -16,7 +18,7 @@ function constantTimeEqual(actual: string, expected: string) {
   return diff === 0;
 }
 
-async function hmac(secret: string, payload: string) {
+export async function signMapClaim(secret: string, payload: string) {
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(secret),
@@ -34,13 +36,14 @@ export function mapCookieSecret(env: {
 }) {
   const owner = env.OWNER_KEY_SHA256?.trim().toLowerCase() ?? "";
   if (/^[0-9a-f]{64}$/.test(owner)) return owner;
-  if (env.ENVIRONMENT !== "production" && env.ACCESS_DEV_BYPASS === "1") return "lvxu-dev-map";
+  if (env.ENVIRONMENT !== "production" && env.ACCESS_DEV_BYPASS === "1")
+    return "lvxu-dev-map";
   return null;
 }
 
 export async function mapCookieHeader(secret: string, now = Date.now()) {
   const exp = Math.floor(now / 1000) + TTL_SECONDS;
-  const signature = await hmac(secret, String(exp));
+  const signature = await signMapClaim(secret, String(exp));
   return `${COOKIE}=${exp}.${signature}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${TTL_SECONDS}`;
 }
 
@@ -53,12 +56,16 @@ export function readCookie(header: string | null, name = COOKIE) {
   return null;
 }
 
-export async function mapCookieValid(secret: string, header: string | null, now = Date.now()) {
+export async function mapCookieValid(
+  secret: string,
+  header: string | null,
+  now = Date.now(),
+) {
   const value = readCookie(header);
   if (!value) return false;
   const [expText, signature] = value.split(".");
   const exp = Number(expText);
   if (!expText || !signature || !Number.isFinite(exp) || exp * 1000 <= now) return false;
-  const expected = await hmac(secret, expText);
+  const expected = await signMapClaim(secret, expText);
   return constantTimeEqual(signature, expected);
 }

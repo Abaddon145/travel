@@ -3,7 +3,9 @@ import { shellHostname, shellScheme } from "./shared/shell-origin.ts";
 
 // The installed app loads webDir. server.url is unset so the shell does not
 // open the live site. hostname is the Amap JS API whitelist host; the scheme
-// stays capacitor, so the origin is not the HTTPS site. See docs/ios/PLAN.md.
+// stays capacitor, so the origin is not the HTTPS site. The map iframe is a
+// subframe, so allowNavigation stays unset and the top window cannot navigate
+// to the HTTPS site. See docs/ios/PLAN.md.
 const config: CapacitorConfig = {
   appId: "app.lvxu.travel",
   appName: "旅序",

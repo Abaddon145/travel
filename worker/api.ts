@@ -2,6 +2,7 @@ import { devBypassAllowed, type AccessEnv, type AccessIdentity } from "./access"
 import { authorizeGate, gateConfigured, type GateDecision } from "./gate";
 import { parseAuthMode, type GateEnv } from "./owner-key";
 import { isAiRoute } from "./ai/http";
+import { requestHasMapFrameToken } from "./map/frame-token";
 import { isMapRoute } from "./map/http";
 import { enforceRateLimit, rateLimitKey, type RateLimiter } from "./rate-limit";
 
@@ -77,6 +78,20 @@ export async function handleApi(request: Request, env: GateEnv, deps: ApiDeps) {
   }
 
   if (isGatedPath(url.pathname)) {
+    const mapFrameConfig =
+      !decision.ok &&
+      url.pathname === "/api/map/config" &&
+      request.method === "GET" &&
+      (await requestHasMapFrameToken(request, env));
+    if (mapFrameConfig) {
+      if (!deps.handleMap) {
+        deps.log({ route, status: 404, result: "not_found" });
+        return json({ error: "not_found" }, 404);
+      }
+      const response = await deps.handleMap(request);
+      deps.log({ route, status: response.status, result: "map_frame" });
+      return response;
+    }
     if (!decision.ok) {
       if (decision.ownerKeyFailure) {
         const failureKey = await rateLimitKey(null, `auth-fail:${clientIp(request)}`);

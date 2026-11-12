@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { basemapUnavailableCopy } from "@shared/map-frame";
 import { overviewFitPadding, parseAmapPath, routeFitPadding } from "@/lib/amap-path";
 import { amapServiceHost } from "@/lib/api-origin";
 
@@ -52,6 +53,7 @@ export type MapLine = {
   id: string;
   polyline: string;
   color: string;
+  mode?: "walking" | "driving" | "transit";
 };
 
 export function AmapCanvas({
@@ -59,15 +61,18 @@ export function AmapCanvas({
   points,
   lines,
   onSelect,
+  onLoadError,
 }: {
   apiKey: string;
   points: MapPoint[];
   lines: MapLine[];
   onSelect: (id: string) => void;
+  onLoadError?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [loadError, setLoadError] = useState(false);
   const selectRef = useRef(onSelect);
+  const loadErrorRef = useRef(onLoadError);
   const pointsRef = useRef(points);
   const linesRef = useRef(lines);
   const drawRef = useRef<() => void>(() => undefined);
@@ -83,7 +88,8 @@ export function AmapCanvas({
 
   useEffect(() => {
     selectRef.current = onSelect;
-  }, [onSelect]);
+    loadErrorRef.current = onLoadError;
+  }, [onLoadError, onSelect]);
 
   useEffect(() => {
     pointsRef.current = points;
@@ -171,6 +177,7 @@ export function AmapCanvas({
       .catch(() => {
         if (cancelled) return;
         setLoadError(true);
+        loadErrorRef.current?.();
       });
 
     return () => {
@@ -200,9 +207,7 @@ export function AmapCanvas({
       data-map-error={loadError ? "1" : undefined}
     >
       {loadError ? (
-        <p className="px-3 py-6 text-sm leading-6">
-          底图没有加载。地点和路线仍可使用；若它们已经显示，多半是高德没有接受当前页面来源。
-        </p>
+        <p className="px-3 py-6 text-sm leading-6">{basemapUnavailableCopy}</p>
       ) : null}
     </div>
   );

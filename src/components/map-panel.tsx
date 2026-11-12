@@ -2,14 +2,28 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion, useReducedMotion } from "motion/react";
 import type { MapLine, MapPoint } from "@/components/amap-canvas";
+import { MapFrameHost } from "@/components/map-frame-host";
 import { OwnerKeyForm } from "@/components/owner-key-form";
 import { Button } from "@/components/ui/button";
-import { attachMapMatch, readMapRoutes, readRoutePicks, saveMapRoute, saveRoutePick } from "@/db/repository";
+import {
+  attachMapMatch,
+  readMapRoutes,
+  readRoutePicks,
+  saveMapRoute,
+  saveRoutePick,
+} from "@/db/repository";
 import { db } from "@/db/database";
 import type { DayView, TimelineEntry } from "@/domain/types";
 import { dayPalette } from "@/lib/cover-color";
 import { formatDateWithWeekday } from "@/lib/dates";
-import { fetchMapRoute, geocodeCity, loadMapConfig, searchPlaces, type PoiCandidate } from "@/lib/map-client";
+import { isNativeShell } from "@/lib/api-origin";
+import {
+  fetchMapRoute,
+  geocodeCity,
+  loadMapConfig,
+  searchPlaces,
+  type PoiCandidate,
+} from "@/lib/map-client";
 import { useOnline } from "@/lib/online";
 import {
   chosenRouteMode,
@@ -26,7 +40,14 @@ const AmapCanvas = lazy(() =>
   import("@/components/amap-canvas").then((module) => ({ default: module.AmapCanvas })),
 );
 
-export type MapPhase = "closed" | "offline" | "not_configured" | "unauthorized" | "loading" | "ready" | "error";
+export type MapPhase =
+  | "closed"
+  | "offline"
+  | "not_configured"
+  | "unauthorized"
+  | "loading"
+  | "ready"
+  | "error";
 
 type MapDay = Pick<DayView, "id" | "title" | "date" | "items">;
 
@@ -66,7 +87,8 @@ export function MapPanel({
   const items = days.flatMap((day) => day.items);
   const verified = items.filter((item) => item.mapSource === "amap").length;
 
-  const visiblePhase: MapPhase = !online && open && phase !== "closed" ? "offline" : phase;
+  const visiblePhase: MapPhase =
+    !online && open && phase !== "closed" ? "offline" : phase;
 
   async function openMap() {
     setOpen(true);
@@ -82,7 +104,13 @@ export function MapPanel({
     setPhase("loading");
     const config = await loadMapConfig();
     if (!config.ok) {
-      setPhase(config.error === "unauthorized" ? "unauthorized" : config.error === "not_configured" ? "not_configured" : "error");
+      setPhase(
+        config.error === "unauthorized"
+          ? "unauthorized"
+          : config.error === "not_configured"
+            ? "not_configured"
+            : "error",
+      );
       return;
     }
     setApiKey(config.config.key);
@@ -139,7 +167,10 @@ export function MapPanel({
   }
 
   function pickedMode(fromId: string, toId: string): RouteMode | null {
-    return picks.find((pick) => pick.fromItemId === fromId && pick.toItemId === toId)?.mode ?? null;
+    return (
+      picks.find((pick) => pick.fromItemId === fromId && pick.toItemId === toId)?.mode ??
+      null
+    );
   }
 
   function choose(fromId: string, toId: string, mode: RouteMode) {
@@ -158,7 +189,12 @@ export function MapPanel({
       return;
     }
     await choose(from.id, to.id, mode);
-    if (from.amapLng == null || from.amapLat == null || to.amapLng == null || to.amapLat == null) {
+    if (
+      from.amapLng == null ||
+      from.amapLat == null ||
+      to.amapLng == null ||
+      to.amapLat == null
+    ) {
       setMessage("先核对两端地点，才能查询路线。");
       return;
     }
@@ -190,13 +226,18 @@ export function MapPanel({
     if (!result?.ok) setMessage(result?.message ?? "没有连上高德。");
   }
 
-  const selectedDay = days.find((day) => day.items.some((item) => item.id === selectedId));
-  const selectedIndex = selectedDay?.items.findIndex((item) => item.id === selectedId) ?? -1;
+  const selectedDay = days.find((day) =>
+    day.items.some((item) => item.id === selectedId),
+  );
+  const selectedIndex =
+    selectedDay?.items.findIndex((item) => item.id === selectedId) ?? -1;
   const selectedItem = selectedIndex >= 0 ? selectedDay?.items[selectedIndex] : undefined;
   const selectedNext =
     selectedDay && selectedIndex >= 0 ? selectedDay.items[selectedIndex + 1] : undefined;
   const selectedLeg =
-    selectedItem && selectedNext ? routesForLeg(routes, selectedItem.id, selectedNext.id) : [];
+    selectedItem && selectedNext
+      ? routesForLeg(routes, selectedItem.id, selectedNext.id)
+      : [];
   const selectedMode =
     selectedItem && selectedNext
       ? chosenRouteMode(pickedMode(selectedItem.id, selectedNext.id), selectedLeg)
@@ -229,7 +270,12 @@ export function MapPanel({
           ],
     ),
   );
-  const lines = mapLines(days, routes, (fromId, toId) => pickedMode(fromId, toId), selectedId);
+  const lines = mapLines(
+    days,
+    routes,
+    (fromId, toId) => pickedMode(fromId, toId),
+    selectedId,
+  );
 
   return (
     <motion.section
@@ -240,7 +286,12 @@ export function MapPanel({
     >
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-medium">地图</h2>
-        <Button type="button" variant="outline" className="h-11" onClick={() => (open ? closeMap() : void openMap())}>
+        <Button
+          type="button"
+          variant="outline"
+          className="h-11"
+          onClick={() => (open ? closeMap() : void openMap())}
+        >
           {open ? "收起地图" : "展开地图"}
         </Button>
       </div>
@@ -255,20 +306,42 @@ export function MapPanel({
                 地图需要网络。时间线上已保存的地点仍可查看，离线时不估算距离。
               </p>
             ) : null}
-            {visiblePhase === "not_configured" ? <p className="px-3 py-6 text-sm">高德密钥还没配置。</p> : null}
+            {visiblePhase === "not_configured" ? (
+              <p className="px-3 py-6 text-sm">高德密钥还没配置。</p>
+            ) : null}
             {visiblePhase === "unauthorized" ? (
               <div className="flex flex-col gap-3 px-3 py-4">
                 <p className="text-sm">请先验证私人密钥，再打开地图。</p>
                 <OwnerKeyForm onVerified={() => void openMap()} />
               </div>
             ) : null}
-            {visiblePhase === "loading" ? <p className="px-3 py-6 text-sm">正在加载地图。</p> : null}
-            {visiblePhase === "error" ? <p className="px-3 py-6 text-sm">地图暂时无法加载。</p> : null}
+            {visiblePhase === "loading" ? (
+              <p className="px-3 py-6 text-sm">正在加载地图。</p>
+            ) : null}
+            {visiblePhase === "error" ? (
+              <p className="px-3 py-6 text-sm">地图暂时无法加载。</p>
+            ) : null}
             {visiblePhase === "ready" ? (
               <Suspense fallback={<p className="px-3 py-6 text-sm">正在加载地图。</p>}>
-                <AmapCanvas apiKey={apiKey} points={points} lines={lines} onSelect={onSelect} />
+                {isNativeShell() ? (
+                  <MapFrameHost
+                    points={points}
+                    lines={lines}
+                    selectedId={selectedId}
+                    onSelect={onSelect}
+                  />
+                ) : (
+                  <AmapCanvas
+                    apiKey={apiKey}
+                    points={points}
+                    lines={lines}
+                    onSelect={onSelect}
+                  />
+                )}
                 {selectedMissing ? (
-                  <p className="px-3 py-2 text-sm text-muted-foreground">公交线路无轨迹</p>
+                  <p className="px-3 py-2 text-sm text-muted-foreground">
+                    公交线路无轨迹
+                  </p>
                 ) : null}
               </Suspense>
             ) : null}
@@ -294,7 +367,9 @@ export function MapPanel({
                 {day.items.map((item, index) => {
                   const next = day.items[index + 1];
                   const leg = next ? routesForLeg(routes, item.id, next.id) : [];
-                  const active = next ? chosenRouteMode(pickedMode(item.id, next.id), leg) : null;
+                  const active = next
+                    ? chosenRouteMode(pickedMode(item.id, next.id), leg)
+                    : null;
                   const selected = selectedId === item.id;
                   return (
                     <li key={item.id} className="flex flex-col gap-2">
@@ -313,10 +388,18 @@ export function MapPanel({
                       {selected && matchingId === item.id ? (
                         <div className="flex flex-col gap-2">
                           {candidates.map((poi) => (
-                            <Button key={poi.id} type="button" variant="outline" className="h-11 justify-start" onClick={() => void confirm(item, poi)}>
+                            <Button
+                              key={poi.id}
+                              type="button"
+                              variant="outline"
+                              className="h-11 justify-start"
+                              onClick={() => void confirm(item, poi)}
+                            >
                               {poi.name}
                               {poi.address ? ` · ${poi.address}` : ""}
-                              {poi.distanceMeters === undefined ? "" : ` · 距检索中心 ${poi.distanceMeters} 米`}
+                              {poi.distanceMeters === undefined
+                                ? ""
+                                : ` · 距检索中心 ${poi.distanceMeters} 米`}
                             </Button>
                           ))}
                         </div>
@@ -356,7 +439,9 @@ export function MapPanel({
             </section>
           ))}
           {selectedId ? null : (
-            <p className="text-sm text-muted-foreground">点一个地点，再核对或核实当天的路线。</p>
+            <p className="text-sm text-muted-foreground">
+              点一个地点，再核对或核实当天的路线。
+            </p>
           )}
         </div>
       ) : null}
@@ -384,11 +469,12 @@ function mapLines(
         fromPoiId: item.amapPoiId ?? "",
         toPoiId: next.amapPoiId ?? "",
       });
-      if (presentation.status !== "verified" || !route?.polyline.trim()) return;
+      if (!mode || presentation.status !== "verified" || !route?.polyline.trim()) return;
       lines.push({
         id: route.id,
         polyline: route.polyline,
         color: dayPalette[dayIndex % dayPalette.length] ?? "#8c4a32",
+        mode,
       });
     });
   });
@@ -440,7 +526,9 @@ function LegModes({
                   aria-pressed={active === mode}
                   className={cn(
                     "flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm text-pretty",
-                    active === mode ? "bg-primary/10 font-medium text-foreground" : "text-muted-foreground",
+                    active === mode
+                      ? "bg-primary/10 font-medium text-foreground"
+                      : "text-muted-foreground",
                   )}
                   onClick={() => void onSelect(mode)}
                 >
@@ -452,7 +540,11 @@ function LegModes({
           })}
         </ul>
       )}
-      <div role="group" aria-label="核实路线" className="grid grid-cols-3 overflow-hidden rounded-lg border">
+      <div
+        role="group"
+        aria-label="核实路线"
+        className="grid grid-cols-3 overflow-hidden rounded-lg border"
+      >
         {routeModes.map((mode) => (
           <Button
             key={mode}

@@ -15,6 +15,7 @@ on:
       - "package-lock.json"
       - "src/**"
       - "index.html"
+      - "map-frame.html"
       - "public/**"
       - "shared/**"
       - "vite.config.ts"

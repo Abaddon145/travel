@@ -1,3 +1,4 @@
+import { isMapFramePath } from "../shared/map-frame";
 import { isShellOrigin } from "../shared/shell-origin";
 import { verifyAccessJwt } from "./access";
 import { handleAiRequest, type AiEnv, type UsageNamespace } from "./ai/http";
@@ -5,6 +6,8 @@ import { AiUsageLedger } from "./ai/usage-ledger";
 import { handleApi } from "./api";
 import { shellPreflight, withShellCors } from "./cors";
 import { mapCookieHeader, mapCookieSecret } from "./map/cookie";
+import { handleMapFrameDocument } from "./map/document";
+import { readMapFrameToken } from "./map/frame-token";
 import { handleMapRequest } from "./map/http";
 import { handleAmapProxy } from "./map/proxy";
 import { createLogger } from "./redact";
@@ -31,6 +34,11 @@ function shellRequest(request: Request) {
 export default {
   async fetch(request, env: WorkerEnv) {
     const url = new URL(request.url);
+    if (isMapFramePath(url.pathname)) {
+      return handleMapFrameDocument(request, (assetRequest) =>
+        env.ASSETS.fetch(assetRequest),
+      );
+    }
     const proxied = url.pathname.startsWith("/_AMapService");
     const api = url.pathname.startsWith("/api/");
     if ((proxied || api) && request.method === "OPTIONS") {
@@ -59,6 +67,7 @@ export default {
       if (
         response.ok &&
         !shellRequest(request) &&
+        !readMapFrameToken(request) &&
         (url.pathname === "/api/auth/check" || url.pathname === "/api/map/config")
       ) {
         const secret = mapCookieSecret(env);

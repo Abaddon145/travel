@@ -3,7 +3,10 @@
  * Values are names and policy text only. No secrets.
  */
 
-import { workerOrigin } from "./shell-origin.ts";
+import { legacyShellOrigin, shellOrigin, workerOrigin } from "./shell-origin.ts";
+
+const frameSrc = `frame-src 'self' ${workerOrigin}`;
+const childSrc = `child-src 'self' blob: ${workerOrigin}`;
 
 export const securityHeaders: Record<string, string> = {
   "content-security-policy": [
@@ -14,6 +17,8 @@ export const securityHeaders: Record<string, string> = {
     `img-src 'self' data: blob: https://webapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com ${workerOrigin}`,
     `connect-src 'self' https://webapi.amap.com https://restapi.amap.com https://*.amap.com https://*.is.autonavi.com https://*.autonavi.com https://geocoding-api.open-meteo.com https://api.open-meteo.com blob: ${workerOrigin}`,
     "worker-src 'self' blob:",
+    frameSrc,
+    childSrc,
     "font-src 'self' data: https://*.amap.com",
     "manifest-src 'self'",
     "object-src 'none'",
@@ -84,11 +89,30 @@ export function injectContentSecurityPolicy(html: string) {
   return html.replace("<head>", `<head>\n${meta}`);
 }
 
-export function applySecurityHeaders(response: Response) {
+export function shellFrameAncestors() {
+  return `frame-ancestors ${shellOrigin} ${legacyShellOrigin}`;
+}
+
+export function shellFrameContentSecurityPolicy() {
+  const policy = securityHeaders["content-security-policy"] ?? "";
+  return policy.replace("frame-ancestors 'none'", shellFrameAncestors());
+}
+
+export function applySecurityHeaders(
+  response: Response,
+  options?: { framing?: "deny" | "shell" },
+) {
+  const framing = options?.framing ?? "deny";
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(securityHeaders)) {
+    if (framing === "shell" && name === "x-frame-options") continue;
+    if (framing === "shell" && name === "content-security-policy") {
+      headers.set(name, shellFrameContentSecurityPolicy());
+      continue;
+    }
     headers.set(name, value);
   }
+  if (framing === "shell") headers.delete("x-frame-options");
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
